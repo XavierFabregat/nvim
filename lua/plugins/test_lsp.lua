@@ -1,0 +1,18 @@
+return {}
+-- local client = vim.lsp.start_client({
+-- 	name = "educationalsp",
+-- 	cmd = { "/Users/xavi/Personal/LSP/rust-lsp/target/debug/rust-lsp" },
+-- 	-- cmd = { "/Users/xavi/.nvm/versions/node/v20.11.1/bin/node /Users/xavi/Personal/LSP/ts-LSP/dist/index.js" },
+-- })
+--
+-- if not client then
+-- 	vim.notify("hey, you did not start the lsp server")
+-- 	return
+-- end
+--
+-- vim.api.nvim_create_autocmd("FileType", {
+-- 	pattern = "markdown",
+-- 	callback = function()
+-- 		vim.lsp.buf_attach_client(0, client)
+-- 	end,
+-- })
