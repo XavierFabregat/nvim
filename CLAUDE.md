@@ -57,13 +57,19 @@ This is a Neovim configuration based on LazyVim with extensive customizations fo
 
 ## Key Features for Development
 
-### Claude Code Integration
-- **Namespace**: All Claude commands use `<leader>a` prefix
-- **Core Operations**: Toggle (`<leader>ac`), focus, resume, continue, quit
-- **File Management**: Add current buffer/directory, list files, clear context
-- **Content Sending**: Send selections, lines, paragraphs, words to Claude
-- **Diff Management**: Accept/deny changes, navigate between diffs
-- **Quick Actions**: Implement, explain, test, optimize, document code
+### Claude Code Integration (Terminal-based)
+- **Primary Shortcut**: `<C-k>` - Chat with Claude (main interaction)
+- **Plugin**: Uses `greggh/claude-code.nvim` for stable terminal-based integration
+- **Core Operations**: 
+  - Toggle (`<leader>ac`) - Opens Claude Code terminal
+  - Resume (`<leader>ar`) - Show conversation picker
+  - Continue (`<leader>aC`) - Resume recent conversation
+  - Verbose (`<leader>av`) - Enable verbose logging
+- **Configuration**: 
+  - Terminal positioned on right side (40% width)
+  - Auto-detects git projects
+  - Auto-refreshes modified files
+  - Uses standard Claude Code CLI commands
 
 ### Quality of Life Enhancements
 - **Enhanced Navigation**: Smooth scrolling, better search centering

@@ -2,49 +2,44 @@
 
 This document outlines all the custom configurations, keybindings, and quality of life improvements added to this Neovim setup based on LazyVim.
 
-## 🤖 Claude Code Integration
+## 🤖 Claude Code Integration (Terminal-based)
+
+This configuration uses the stable `greggh/claude-code.nvim` plugin for reliable terminal-based Claude Code integration.
+
+### Primary Shortcut
+| Keybinding | Command | Description |
+|------------|---------|-------------|
+| `<C-k>` | `ClaudeCode` | **Main shortcut** - Open Claude Code terminal |
 
 ### Core Operations
 | Keybinding | Command | Description |
 |------------|---------|-------------|
-| `<leader>ac` | `ClaudeCode` | Toggle Claude interface |
-| `<leader>af` | `ClaudeCodeFocus` | Focus Claude window |
-| `<leader>ar` | `ClaudeCode --resume` | Resume Claude session |
-| `<leader>aC` | `ClaudeCode --continue` | Continue Claude conversation |
-| `<leader>aq` | `ClaudeCodeQuit` | Quit Claude |
+| `<leader>ac` | `ClaudeCode` | Toggle Claude Code terminal |
+| `<leader>ar` | `ClaudeCodeResume` | Show conversation picker |
+| `<leader>aC` | `ClaudeCodeContinue` | Resume recent conversation |
+| `<leader>av` | `ClaudeCodeVerbose` | Enable verbose logging |
 
-### File Management
-| Keybinding | Command | Description |
-|------------|---------|-------------|
-| `<leader>ab` | `ClaudeCodeAdd %` | Add current buffer to Claude |
-| `<leader>aB` | `ClaudeCodeAdd .` | Add current directory to Claude |
-| `<leader>al` | `ClaudeCodeList` | List files added to Claude |
-| `<leader>ax` | `ClaudeCodeClear` | Clear all files from Claude |
+### Plugin Features
+- **Terminal Integration**: Opens Claude Code CLI in a dedicated terminal window
+- **Auto-detection**: Automatically detects git projects
+- **File Refresh**: Auto-refreshes modified files in the editor
+- **Window Configuration**: 
+  - Positioned on the right side
+  - 40% width, 80% height
+  - Non-floating window for stable interaction
+- **Command Support**: Full Claude Code CLI command support
+- **Plenary.nvim**: Uses plenary.nvim for enhanced functionality
 
-### Send Content to Claude
-| Keybinding | Command | Description |
-|------------|---------|-------------|
-| `<leader>as` | `ClaudeCodeSend` (visual) | Send visual selection to Claude |
-| `<leader>aS` | `ClaudeCodeSend` | Send current line to Claude |
-| `<leader>ap` | `ClaudeCodeSendParagraph` | Send paragraph to Claude |
-| `<leader>aw` | `ClaudeCodeSendWord` | Send word under cursor to Claude |
+### Workflow
+1. Press `<C-k>` to open Claude Code terminal
+2. Interact directly with Claude Code CLI
+3. Files are automatically refreshed when modified
+4. Use resume/continue commands to manage conversations
 
-### Diff Management
-| Keybinding | Command | Description |
-|------------|---------|-------------|
-| `<leader>aa` | `ClaudeCodeDiffAccept` | Accept diff changes |
-| `<leader>ad` | `ClaudeCodeDiffDeny` | Deny diff changes |
-| `<leader>an` | `ClaudeCodeDiffNext` | Navigate to next diff |
-| `<leader>aP` | `ClaudeCodeDiffPrev` | Navigate to previous diff |
-
-### Quick AI Actions
-| Keybinding | Command | Description |
-|------------|---------|-------------|
-| `<leader>ai` | `ClaudeCode implement this function` | Ask Claude to implement function |
-| `<leader>ae` | `ClaudeCode explain this code` | Ask Claude to explain code |
-| `<leader>at` | `ClaudeCode write tests for this` | Ask Claude to write tests |
-| `<leader>ao` | `ClaudeCode optimize this code` | Ask Claude to optimize code |
-| `<leader>aD` | `ClaudeCode add documentation` | Ask Claude to add documentation |
+### Requirements
+- Neovim 0.7.0+
+- Claude Code CLI installed and configured
+- plenary.nvim dependency
 
 ## 🍿 Snacks.nvim Enhancements
 

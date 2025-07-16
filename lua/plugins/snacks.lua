@@ -66,13 +66,7 @@ return {
       },
     },
     quickfile = { enabled = true },
-    scope = { 
-      enabled = true,
-      keys = {
-        jump = "<leader>j",
-        jump_back = "<leader>J",
-      },
-    },
+    scope = { enabled = false },
     scroll = { 
       enabled = true,
       animate = {
