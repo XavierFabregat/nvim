@@ -13,12 +13,17 @@ This is a Neovim configuration based on LazyVim with extensive customizations fo
 - **Core Config**: `lua/config/` - Contains fundamental Neovim settings
   - `lazy.lua` - Plugin manager setup with LazyVim integration
   - `options.lua` - Enhanced editor settings, transparency, scrolling, search improvements
-  - `keymaps.lua` - Custom keybindings for productivity
-  - `autocmds.lua` - Automated behaviors and file handling
+  - `keymaps.lua` - Custom keybindings for productivity, LSP actions, and diagnostics
+  - `autocmds.lua` - Automated behaviors, file handling, and auto-save functionality
   - `colorscheme.lua` & `highlights.lua` - Visual theming
 - **Plugins**: `lua/plugins/` - Plugin configurations extending LazyVim
   - `claudecode.lua` - Claude Code integration with comprehensive keybindings
   - `snacks.lua` - Modern UI components (terminal, notifications, zen mode, etc.)
+  - `multicursor.lua` - Multi-cursor editing support
+  - `bookmarks.lua` - Bookmark system for navigation
+  - `spell.lua` - Smart spell checking for comments and strings
+  - `clipboard.lua` - Enhanced clipboard management with history
+  - `rainbow.lua` - Rainbow bracket visualization
   - Other plugin overrides and extensions
 
 ### Plugin Management
@@ -72,10 +77,14 @@ This is a Neovim configuration based on LazyVim with extensive customizations fo
   - Uses standard Claude Code CLI commands
 
 ### Quality of Life Enhancements
-- **Enhanced Navigation**: Smooth scrolling, better search centering
-- **Smart Auto-commands**: Highlight on yank, auto-resize splits, cursor position memory
+- **Enhanced Navigation**: Smooth scrolling, better search centering, bookmark system
+- **Smart Auto-commands**: Highlight on yank, auto-resize splits, cursor position memory, auto-save
 - **Better Defaults**: Persistent undo, faster timeouts, auto-write, confirmation dialogs
-- **Visual Improvements**: Transparency support, relative line numbers, invisible character display
+- **Visual Improvements**: Transparency support, relative line numbers, invisible character display, rainbow brackets
+- **Multi-cursor Support**: Advanced multi-cursor editing with vim-visual-multi
+- **Clipboard Management**: Enhanced clipboard history with yanky and neoclip
+- **Smart Spell Checking**: Context-aware spell checking for comments and strings only
+- **Enhanced LSP Integration**: Quick code actions, diagnostic filtering, and improved navigation
 
 ### Modern UI Components (Snacks.nvim)
 - **Terminal**: Bottom-positioned terminal (`<C-/>`)

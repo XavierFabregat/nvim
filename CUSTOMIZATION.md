@@ -107,6 +107,17 @@ This configuration uses the stable `greggh/claude-code.nvim` plugin for reliable
 
 ## ⚡ Quality of Life Improvements
 
+### Auto-save Functionality
+The configuration includes intelligent auto-save that triggers on:
+- Buffer switch (`BufLeave`)
+- Focus lost (`FocusLost`)
+- Idle timeout (`CursorHold`)
+
+Only saves files that are:
+- Modified
+- Regular files (not special buffers)
+- Not read-only
+
 ### Editor Settings
 
 #### Enhanced Scrolling
@@ -212,11 +223,83 @@ list = true             -- Show invisible characters
 | `[l` | Previous location | Navigate to previous location item |
 | `]l` | Next location | Navigate to next location item |
 
-### Diagnostic Navigation
+### Enhanced LSP & Code Actions
 | Keybinding | Action | Description |
 |------------|--------|-------------|
-| `[d` | Previous diagnostic | Go to previous diagnostic |
-| `]d` | Next diagnostic | Go to next diagnostic |
+| `<leader>ca` | Code actions | Show available code actions |
+| `<leader>ca` (visual) | Code actions | Show code actions for selection |
+| `<leader>cr` | Rename symbol | Rename symbol under cursor |
+| `<leader>cl` | Run code lens | Execute code lens action |
+| `<leader>qf` | Quick fix | Apply preferred code action |
+| `K` | Hover documentation | Show hover information |
+| `<C-k>` | Signature help | Show signature help |
+| `<C-k>` (insert) | Signature help | Show signature help in insert mode |
+
+### Enhanced Diagnostic Navigation
+| Keybinding | Action | Description |
+|------------|--------|-------------|
+| `[d` | Previous diagnostic | Go to previous diagnostic (with float) |
+| `]d` | Next diagnostic | Go to next diagnostic (with float) |
+| `<leader>cd` | Show diagnostic | Show diagnostic float |
+| `[e` | Previous error | Go to previous error only |
+| `]e` | Next error | Go to next error only |
+| `[w` | Previous warning | Go to previous warning only |
+| `]w` | Next warning | Go to next warning only |
+
+### Multi-cursor Editing
+| Keybinding | Action | Description |
+|------------|--------|-------------|
+| `<C-d>` | Add cursor on word | Add cursor to word under cursor |
+| `<C-d>` (visual) | Add cursor on selection | Add cursor to visual selection |
+| `<M-C-j>` | Add cursor down | Add cursor below current |
+| `<M-C-k>` | Add cursor up | Add cursor above current |
+| `<C-x>` | Skip region | Skip current region in multi-cursor |
+| `<C-p>` | Remove region | Remove current region from multi-cursor |
+| `\A` | Select all | Select all occurrences |
+| `\a` | Add selection | Add to selection |
+| `\f` | Find selection | Find selection |
+| `\c` | Create cursors | Create cursors from selection |
+| `gS` | Reselect last | Reselect last multi-cursor selection |
+
+### Bookmark System
+| Keybinding | Action | Description |
+|------------|--------|-------------|
+| `<leader>mm` | Toggle bookmark | Toggle bookmark at current line |
+| `<leader>mi` | Annotate bookmark | Add annotation to bookmark |
+| `<leader>ma` | Show all bookmarks | Show all bookmarks in quickfix |
+| `<leader>mn` | Next bookmark | Navigate to next bookmark |
+| `<leader>mp` | Previous bookmark | Navigate to previous bookmark |
+| `<leader>mc` | Clear bookmarks | Clear bookmarks in current buffer |
+| `<leader>mx` | Clear all bookmarks | Clear all bookmarks |
+| `<leader>ms` | Save bookmarks | Save bookmarks to file |
+| `<leader>ml` | Load bookmarks | Load bookmarks from file |
+| `<leader>fb` | Find bookmarks (file) | Telescope: bookmarks in current file |
+| `<leader>fB` | Find bookmarks (all) | Telescope: bookmarks in all files |
+
+### Clipboard Management
+| Keybinding | Action | Description |
+|------------|--------|-------------|
+| `<leader>fy` | Clipboard history | Show clipboard history (neoclip) |
+| `<leader>fY` | System clipboard | Show system clipboard history |
+| `<leader>fm` | Macro history | Show macro history |
+| `<leader>p` | Put after | Smart put after with yanky |
+| `<leader>P` | Put before | Smart put before with yanky |
+| `<leader>gp` | Put after (cursor) | Put after, leave cursor |
+| `<leader>gP` | Put before (cursor) | Put before, leave cursor |
+| `[y` | Cycle forward | Cycle forward through yank history |
+| `]y` | Cycle backward | Cycle backward through yank history |
+
+### Spell Checking
+| Keybinding | Action | Description |
+|------------|--------|-------------|
+| `<leader>us` | Toggle spell check | Enable/disable spell checking |
+| `]s` | Next spelling mistake | Jump to next spelling error |
+| `[s` | Previous spelling mistake | Jump to previous spelling error |
+| `z=` | Spelling suggestions | Show spelling suggestions |
+| `zg` | Add word to dictionary | Add word to personal dictionary |
+| `zw` | Mark word incorrect | Mark word as incorrect |
+| `zug` | Remove from dictionary | Remove word from personal dictionary |
+| `<leader>cs` | Quick fix spelling | Apply first spelling suggestion |
 
 ### Utility Functions
 | Keybinding | Action | Description |
@@ -248,6 +331,24 @@ The new Snacks explorer replaces netrw and provides:
 - Better integration with LazyVim
 - Consistent theming
 
+## 🎨 Visual Enhancements
+
+### Rainbow Brackets
+The configuration includes rainbow bracket highlighting for better code hierarchy visualization:
+- **Plugin**: `HiPhish/rainbow-delimiters.nvim`
+- **Strategy**: Global rainbow delimiters with language-specific queries
+- **Colors**: 7-color rotation (Red, Yellow, Blue, Orange, Green, Violet, Cyan)
+- **Language Support**: Special queries for Lua, TypeScript, JavaScript, TSX, JSX
+- **Blacklisted**: HTML and XML files (to avoid conflicts)
+
+### Spell Checking
+Smart spell checking that only activates in appropriate contexts:
+- **Plugin**: `lewis6991/spellsitter.nvim`
+- **Context-aware**: Only checks comments, strings, and documentation
+- **Language**: English (en) dictionary
+- **Ignored Patterns**: URLs, email addresses, file paths, hex colors, code patterns
+- **Treesitter Integration**: Uses treesitter capture groups for precision
+
 ## 🔧 Auto-commands
 
 ### Smart Behaviors
@@ -256,6 +357,7 @@ The new Snacks explorer replaces netrw and provides:
 - **Remember cursor position**: Return to last cursor position when reopening files
 - **Auto-reload files**: Detect and reload files changed outside Neovim
 - **Quick close**: Press `q` to close help, man pages, and info windows
+- **Auto-save**: Intelligent auto-save on buffer switch, focus lost, and idle timeout
 
 ### File Type Handling
 Special handling for these file types with `q` to close:
@@ -285,6 +387,11 @@ Special handling for these file types with `q` to close:
 │   └── plugins/
 │       ├── claudecode.lua  # Claude Code configuration
 │       ├── snacks.lua      # Snacks.nvim configuration
+│       ├── multicursor.lua # Multi-cursor editing
+│       ├── bookmarks.lua   # Bookmark system
+│       ├── spell.lua       # Smart spell checking
+│       ├── clipboard.lua   # Enhanced clipboard management
+│       ├── rainbow.lua     # Rainbow bracket highlighting
 │       ├── dashboard.lua   # Dashboard configuration
 │       ├── noe-tree.lua    # Neo-tree disabled
 │       ├── copilot.lua     # GitHub Copilot
@@ -311,6 +418,12 @@ Special handling for these file types with `q` to close:
 5. **Buffer management**: Use `[b`/`]b` for navigation, `<space>bd` for smart deletion
 6. **Git integration**: Use `<space>gb` for blame, `<space>gf` for file history
 7. **Notifications**: Check `<space>n` for notification history, `<space>un` to dismiss all
+8. **Multi-cursor**: Use `<C-d>` on a word to add cursors, `<C-x>` to skip, `<C-p>` to remove
+9. **Bookmarks**: Use `<space>mm` to bookmark important lines, `<space>ma` to see all
+10. **Clipboard history**: Use `<space>fy` to access previous yanks, `[y`/`]y` to cycle through
+11. **Spell checking**: Use `<space>us` to toggle, `]s` to jump to errors, `z=` for suggestions
+12. **Code actions**: Use `<space>ca` for quick fixes, `<space>qf` for preferred actions
+13. **Diagnostic filtering**: Use `[e`/`]e` for errors only, `[w`/`]w` for warnings only
 
 ## 📝 Notes
 
@@ -319,3 +432,9 @@ Special handling for these file types with `q` to close:
 - The configuration maintains LazyVim defaults while adding enhancements
 - Claude Code integration provides seamless AI assistance workflow
 - Snacks.nvim adds modern UI components and smooth animations
+- Auto-save works intelligently and only saves when necessary
+- Multi-cursor editing provides VSCode-like multiple selection capabilities
+- Bookmark system persists across sessions and supports annotations
+- Clipboard history maintains 100 entries with persistent storage
+- Spell checking uses treesitter for context-aware operation
+- Rainbow brackets improve code readability with 7-color rotation
