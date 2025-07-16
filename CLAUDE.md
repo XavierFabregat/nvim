@@ -24,6 +24,9 @@ This is a Neovim configuration based on LazyVim with extensive customizations fo
   - `spell.lua` - Smart spell checking for comments and strings
   - `clipboard.lua` - Enhanced clipboard management with history
   - `rainbow.lua` - Rainbow bracket visualization
+  - `typescript.lua` - TypeScript tools and enhancements
+  - `nextjs.lua` - Next.js specific navigation and templates
+  - `package-manager.lua` - npm/yarn/pnpm integration with script runner
   - Other plugin overrides and extensions
 
 ### Plugin Management
@@ -85,6 +88,8 @@ This is a Neovim configuration based on LazyVim with extensive customizations fo
 - **Clipboard Management**: Enhanced clipboard history with yanky and neoclip
 - **Smart Spell Checking**: Context-aware spell checking for comments and strings only
 - **Enhanced LSP Integration**: Quick code actions, diagnostic filtering, and improved navigation
+- **TypeScript/Next.js Support**: Auto-imports, component templates, file navigation, and TypeScript tools
+- **Package Management**: Smart npm/yarn/pnpm detection with script runner and dependency management
 
 ### Modern UI Components (Snacks.nvim)
 - **Terminal**: Bottom-positioned terminal (`<C-/>`)

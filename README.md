@@ -1,6 +1,6 @@
 # 🚀 Modern Neovim Configuration
 
-A highly customized Neovim configuration built on [LazyVim](https://github.com/LazyVim/LazyVim) with Claude Code integration, modern UI enhancements, and extensive productivity improvements.
+A highly customized Neovim configuration built on [LazyVim](https://github.com/LazyVim/LazyVim) with Claude Code integration, modern UI enhancements, TypeScript/Next.js development tools, and extensive productivity improvements.
 
 ## ✨ Features
 
@@ -10,6 +10,13 @@ A highly customized Neovim configuration built on [LazyVim](https://github.com/L
 - 🎨 **Modern Explorer** - Sidebar file management replacing netrw
 - 🔧 **Smart Auto-commands** - Intelligent behavior automation
 - 📁 **Extensible Architecture** - Easy to customize and extend
+- 🟦 **TypeScript/Next.js** - Auto-imports, templates, and smart navigation
+- 📦 **Package Management** - npm/yarn/pnpm integration with script runner
+- 🎯 **Multi-cursor** - Advanced multi-cursor editing capabilities
+- 🔖 **Bookmarks** - Persistent bookmark system with annotations
+- 📋 **Clipboard History** - Enhanced clipboard management with history
+- 🌈 **Rainbow Brackets** - Visual code hierarchy with colored brackets
+- 📝 **Smart Spell Check** - Context-aware spell checking for comments/strings
 
 ## 🛠️ Installation
 
@@ -19,7 +26,8 @@ A highly customized Neovim configuration built on [LazyVim](https://github.com/L
 - Git
 - A [Nerd Font](https://www.nerdfonts.com/) for proper icons
 - [Claude Code CLI](https://claude.ai/code) installed and configured
-- Node.js (for LSP servers and formatters)
+- Node.js (for LSP servers, formatters, and package management)
+- TypeScript (for TypeScript projects): `npm install -g typescript`
 
 ### Quick Install
 
@@ -106,6 +114,61 @@ Modern UI components replacing built-in functionality:
 | `<leader>bd` | Smart delete | Close buffer intelligently |
 | `<leader>cR` | Rename file | Rename current file |
 
+### 🟦 TypeScript/Next.js Development
+
+#### TypeScript Tools
+| Key | Function | Description |
+|-----|----------|-------------|
+| `<leader>to` | Organize imports | Auto-organize TypeScript imports |
+| `<leader>tr` | Remove unused imports | Clean up unused imports |
+| `<leader>ta` | Add missing imports | Auto-add missing imports |
+| `<leader>tf` | Fix all issues | Fix all TypeScript problems |
+| `<leader>tc` | TypeScript check | Run compiler check |
+| `<leader>tw` | TypeScript watch | Start watch mode |
+
+#### Next.js Navigation
+| Key | Function | Description |
+|-----|----------|-------------|
+| `<leader>np` | Find pages | Navigate to pages directory |
+| `<leader>nc` | Find components | Navigate to components |
+| `<leader>na` | Find API routes | Navigate to API routes |
+| `<leader>nh` | Find hooks | Navigate to custom hooks |
+| `<leader>nr` | Switch related file | Toggle component ↔ test, page ↔ API |
+
+#### Component Templates
+| Key | Function | Description |
+|-----|----------|-------------|
+| `<leader>ncc` | Create component | Generate React component |
+| `<leader>ncp` | Create page | Generate Next.js page |
+| `<leader>nca` | Create API route | Generate API route |
+| `<leader>nch` | Create hook | Generate custom hook |
+
+### 📦 Package Management
+
+#### Package Operations
+| Key | Function | Description |
+|-----|----------|-------------|
+| `<leader>Pi` | Install deps | Install all dependencies |
+| `<leader>Pa` | Add dependency | Add new dependency |
+| `<leader>Pd` | Add dev dependency | Add dev dependency |
+| `<leader>Pr` | Remove dependency | Remove dependency |
+| `<leader>Ps` | Run script | Show script picker |
+
+#### Quick Scripts
+| Key | Function | Description |
+|-----|----------|-------------|
+| `<leader>Psd` | Run dev | Start development server |
+| `<leader>Psb` | Run build | Build project |
+| `<leader>Pst` | Run test | Run test suite |
+| `<leader>Psl` | Run lint | Run linter |
+| `<leader>Pss` | Run start | Start production server |
+
+**Features:**
+- Auto-detects npm/yarn/pnpm/bun from lock files
+- Integrates with Snacks terminal for better UX
+- Inline package version display in package.json
+- Quick dependency management
+
 ### ⚡ Quality of Life Improvements
 
 #### Enhanced Editor Settings
@@ -141,6 +204,13 @@ relativenumber = true, list = true
 - `<C-du>` - Scroll with centering
 - `[]/b` - Buffer navigation
 
+**Multi-cursor & Productivity:**
+- `<C-d>` - Add cursor to word under cursor
+- `<leader>mm` - Toggle bookmark at current line
+- `<leader>fy` - Access clipboard history
+- `<leader>us` - Toggle spell checking
+- `<leader>ca` - Show code actions
+
 ## 📁 Architecture
 
 ### File Structure
@@ -163,6 +233,14 @@ relativenumber = true, list = true
     └── plugins/             # Plugin configurations
         ├── claudecode.lua  # Claude Code integration
         ├── snacks.lua      # Modern UI components
+        ├── typescript.lua  # TypeScript tools & enhancements
+        ├── nextjs.lua      # Next.js navigation & templates
+        ├── package-manager.lua # Package management integration
+        ├── multicursor.lua # Multi-cursor editing
+        ├── bookmarks.lua   # Bookmark system
+        ├── clipboard.lua   # Clipboard history
+        ├── rainbow.lua     # Rainbow brackets
+        ├── spell.lua       # Smart spell checking
         ├── dashboard.lua   # Startup dashboard
         ├── copilot.lua     # GitHub Copilot
         ├── treesitter.lua  # Syntax highlighting
@@ -182,6 +260,8 @@ relativenumber = true, list = true
 - Maintain compatibility with LazyVim updates
 - Focus on productivity and workflow enhancement
 - Terminal-based integrations for stability
+- TypeScript/Next.js first-class support
+- Smart package management integration
 
 ## 🔧 Customization
 
@@ -287,6 +367,16 @@ vim.opt.background = "dark"
 # Configuration Reload
 :source %               # Reload current file
 :LuaSnip reload         # Reload snippets
+
+# TypeScript/Next.js Development
+:TSC                    # TypeScript check
+:TSCWatch               # TypeScript watch mode
+:NextComponent component MyComponent  # Create component template
+
+# Package Management
+:PackageRun             # Show script picker
+:PackageInstall         # Install dependencies
+:PackageAdd             # Add new dependency
 
 # Health Checks
 :checkhealth            # System health check

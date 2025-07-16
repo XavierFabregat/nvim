@@ -311,6 +311,69 @@ list = true             -- Show invisible characters
 | `<leader>qq` | Quit all | Close all windows |
 | `<leader>qQ` | Force quit all | Force close all windows |
 
+### TypeScript/Next.js Development
+| Keybinding | Action | Description |
+|------------|--------|-------------|
+| `<leader>to` | Organize imports | Auto-organize TypeScript imports |
+| `<leader>tr` | Remove unused imports | Remove unused import statements |
+| `<leader>ta` | Add missing imports | Add missing import statements |
+| `<leader>tf` | Fix all issues | Fix all TypeScript fixable issues |
+| `<leader>tR` | Rename file | Rename file and update imports |
+| `<leader>ts` | Go to source definition | Navigate to source definition |
+| `<leader>tc` | TypeScript check | Run TypeScript compiler check |
+| `<leader>tC` | TypeScript check (open) | Run TypeScript check and open results |
+| `<leader>tw` | TypeScript watch | Start TypeScript watch mode |
+
+### Next.js File Navigation
+| Keybinding | Action | Description |
+|------------|--------|-------------|
+| `<leader>np` | Find pages | Find pages in pages/app directory |
+| `<leader>nc` | Find components | Find components in components directory |
+| `<leader>na` | Find API routes | Find API routes in pages/api or app/api |
+| `<leader>nh` | Find hooks | Find custom hooks in hooks directory |
+| `<leader>nu` | Find utils | Find utilities in utils/lib directory |
+| `<leader>ns` | Find styles | Find styles in styles directory |
+| `<leader>nt` | Find types | Find TypeScript types in types directory |
+| `<leader>nr` | Switch to related file | Switch between component/test, page/API |
+
+### Next.js Component Templates
+| Keybinding | Action | Description |
+|------------|--------|-------------|
+| `<leader>ncc` | Create component | Generate React component template |
+| `<leader>ncp` | Create page | Generate Next.js page template |
+| `<leader>nca` | Create API route | Generate Next.js API route template |
+| `<leader>nch` | Create hook | Generate custom hook template |
+
+### Package Management
+| Keybinding | Action | Description |
+|------------|--------|-------------|
+| `<leader>Pi` | Install dependencies | Install all dependencies |
+| `<leader>Pa` | Add dependency | Add new dependency |
+| `<leader>Pd` | Add dev dependency | Add new dev dependency |
+| `<leader>Pr` | Remove dependency | Remove dependency |
+| `<leader>Ps` | Run script | Show script picker and run |
+| `<leader>Pm` | Show package manager | Display detected package manager |
+
+### Quick Package Scripts
+| Keybinding | Action | Description |
+|------------|--------|-------------|
+| `<leader>Psd` | Run dev | Run development server |
+| `<leader>Psb` | Run build | Run build process |
+| `<leader>Pst` | Run test | Run test suite |
+| `<leader>Psl` | Run lint | Run linting |
+| `<leader>Pss` | Run start | Run start script |
+
+### Package.json Integration
+| Keybinding | Action | Description |
+|------------|--------|-------------|
+| `<leader>pv` | Show package versions | Display package version info |
+| `<leader>ph` | Hide package versions | Hide package version info |
+| `<leader>pt` | Toggle package versions | Toggle package version display |
+| `<leader>pu` | Update package | Update package under cursor |
+| `<leader>pd` | Delete package | Delete package under cursor |
+| `<leader>pi` | Install package | Install package under cursor |
+| `<leader>pc` | Change package version | Change package version |
+
 ### Better Text Operations
 | Keybinding | Action | Description |
 |------------|--------|-------------|
@@ -348,6 +411,27 @@ Smart spell checking that only activates in appropriate contexts:
 - **Language**: English (en) dictionary
 - **Ignored Patterns**: URLs, email addresses, file paths, hex colors, code patterns
 - **Treesitter Integration**: Uses treesitter capture groups for precision
+
+### TypeScript/Next.js Enhancements
+Advanced TypeScript and Next.js development features:
+- **Plugin**: `pmizio/typescript-tools.nvim` for comprehensive TypeScript support
+- **Auto-imports**: Automatic import organization, addition, and removal
+- **Type Checking**: Integrated TypeScript compiler with real-time diagnostics
+- **Template Generation**: Ready-to-use templates for components, pages, API routes, and hooks
+- **File Navigation**: Quick access to pages, components, API routes, hooks, utils, and types
+- **Smart Switching**: Intelligent file switching between related files (component ↔ test, page ↔ API)
+- **JSX Support**: Auto-tag closing and template string conversion
+- **Inlay Hints**: Parameter names, types, and return type hints for better code understanding
+
+### Package Management Integration
+Comprehensive package management with automatic detection:
+- **Plugin**: `vuki656/package-info.nvim` for package.json integration
+- **Smart Detection**: Automatically detects npm, yarn, pnpm, or bun based on lock files
+- **Script Runner**: Quick access to package.json scripts with picker interface
+- **Dependency Management**: Add, remove, and update dependencies directly from editor
+- **Version Display**: Show package versions inline in package.json
+- **Terminal Integration**: Uses Snacks terminal for better command execution experience
+- **Quick Scripts**: One-key access to common scripts (dev, build, test, lint, start)
 
 ## 🔧 Auto-commands
 
@@ -392,6 +476,9 @@ Special handling for these file types with `q` to close:
 │       ├── spell.lua       # Smart spell checking
 │       ├── clipboard.lua   # Enhanced clipboard management
 │       ├── rainbow.lua     # Rainbow bracket highlighting
+│       ├── typescript.lua  # TypeScript tools and enhancements
+│       ├── nextjs.lua      # Next.js navigation and templates
+│       ├── package-manager.lua # Package management integration
 │       ├── dashboard.lua   # Dashboard configuration
 │       ├── noe-tree.lua    # Neo-tree disabled
 │       ├── copilot.lua     # GitHub Copilot
@@ -424,6 +511,11 @@ Special handling for these file types with `q` to close:
 11. **Spell checking**: Use `<space>us` to toggle, `]s` to jump to errors, `z=` for suggestions
 12. **Code actions**: Use `<space>ca` for quick fixes, `<space>qf` for preferred actions
 13. **Diagnostic filtering**: Use `[e`/`]e` for errors only, `[w`/`]w` for warnings only
+14. **TypeScript workflow**: Use `<space>to` to organize imports, `<space>tf` to fix all issues
+15. **Next.js navigation**: Use `<space>nc` for components, `<space>np` for pages, `<space>na` for API routes
+16. **Component templates**: Use `<space>ncc` for components, `<space>ncp` for pages, `<space>nca` for API routes
+17. **Package management**: Use `<space>Ps` for script runner, `<space>Pa` to add deps, `<space>Pi` to install
+18. **Quick scripts**: Use `<space>Psd` for dev, `<space>Psb` for build, `<space>Pst` for test
 
 ## 📝 Notes
 
@@ -438,3 +530,7 @@ Special handling for these file types with `q` to close:
 - Clipboard history maintains 100 entries with persistent storage
 - Spell checking uses treesitter for context-aware operation
 - Rainbow brackets improve code readability with 7-color rotation
+- TypeScript tools provide comprehensive import management and type checking
+- Next.js integration offers smart file navigation and template generation
+- Package management automatically detects npm/yarn/pnpm/bun and provides unified interface
+- Component templates include TypeScript types and Next.js best practices
