@@ -1,67 +1,6 @@
 -- Enhanced clipboard management with history
 return {
   {
-    "AckslD/nvim-neoclip.lua",
-    dependencies = {
-      "nvim-telescope/telescope.nvim",
-    },
-    event = "VeryLazy",
-    config = function()
-      require("neoclip").setup({
-        -- Number of entries to keep in history
-        history = 100,
-        -- Enable persistent history across sessions
-        enable_persistent_history = true,
-        -- Length of preview in telescope
-        length_limit = 1000,
-        -- Continuous sync with system clipboard
-        continuous_sync = true,
-        -- Database path for persistent history
-        db_path = vim.fn.stdpath("data") .. "/databases/neoclip.sqlite3",
-        -- Filter out certain entries
-        filter = nil,
-        -- Preview settings
-        preview = true,
-        -- Prompt for confirmation when selecting from history
-        prompt = "Neoclip",
-        -- Default register to use
-        default_register = '"',
-        -- Default register for macros
-        default_register_macros = "q",
-        -- Enable macro history
-        enable_macro_history = true,
-        -- Content spec for different types
-        content_spec = {
-          -- For regular yanks
-          ['"'] = {
-            lines = 1,
-            chars = 50,
-          },
-          -- For system clipboard
-          ["+"] = {
-            lines = 1,
-            chars = 50,
-          },
-          -- For selection clipboard
-          ["*"] = {
-            lines = 1,
-            chars = 50,
-          },
-        },
-        -- Disable for certain filetypes
-        disable_for = {},
-      })
-      
-      -- Load telescope extension
-      require("telescope").load_extension("neoclip")
-    end,
-    keys = {
-      { "<leader>fy", "<cmd>Telescope neoclip<cr>", desc = "Clipboard history" },
-      { "<leader>fY", "<cmd>Telescope neoclip plus<cr>", desc = "System clipboard history" },
-      { "<leader>fm", "<cmd>Telescope neoclip macros<cr>", desc = "Macro history" },
-    },
-  },
-  {
     "gbprod/yanky.nvim",
     dependencies = {
       "nvim-telescope/telescope.nvim",
@@ -116,8 +55,11 @@ return {
         },
       })
       
-      -- Load telescope extension
-      require("telescope").load_extension("yank_history")
+      -- Load telescope extension with error handling
+      local ok, telescope = pcall(require, "telescope")
+      if ok then
+        telescope.load_extension("yank_history")
+      end
     end,
     keys = {
       { "<leader>p", "<Plug>(YankyPutAfter)", desc = "Put after" },
@@ -126,7 +68,7 @@ return {
       { "<leader>gP", "<Plug>(YankyGPutBefore)", desc = "Put before (leave cursor)" },
       { "[y", "<Plug>(YankyCycleForward)", desc = "Cycle forward through yank history" },
       { "]y", "<Plug>(YankyCycleBackward)", desc = "Cycle backward through yank history" },
-      { "<leader>fy", "<cmd>Telescope yank_history<cr>", desc = "Yank history" },
+      { "<leader>fy", "<cmd>Telescope yank_history<cr>", desc = "Clipboard history" },
     },
   },
 }
