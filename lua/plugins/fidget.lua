@@ -59,7 +59,6 @@ return {
         filter = vim.log.levels.INFO,
         history_size = 128,
         override_vim_notify = false,
-        configs = { default = "default" },
         redirect = function(msg, level, opts)
           if opts and opts.on_open then
             return false
