@@ -2,15 +2,7 @@
 -- Default options that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/options.lua
 -- Add any additional options here
 
--- Transparency settings
-vim.api.nvim_set_hl(0, "Normal", { bg = "none" })
-vim.api.nvim_set_hl(0, "NormalNC", { bg = "none" })
-vim.api.nvim_set_hl(0, "SignColumn", { bg = "none" })
-vim.api.nvim_set_hl(0, "EndOfBuffer", { bg = "none" })
-vim.api.nvim_set_hl(0, "TabLineFill", { bg = "none" })
-vim.api.nvim_set_hl(0, "LineNr", { bg = "none" })
-vim.api.nvim_set_hl(0, "StatusLine", { bg = "none" })
-vim.api.nvim_set_hl(0, "StatusLineNC", { bg = "none" })
+-- Transparency is handled in lua/config/highlights.lua
 
 -- Quality of life improvements
 local opt = vim.opt
@@ -42,7 +34,6 @@ opt.showbreak = "↳ "        -- Character to show for wrapped lines
 
 -- Enhanced visual experience
 opt.cursorline = true       -- Highlight current line
-opt.colorcolumn = "100"     -- Show column at 100 characters
 opt.signcolumn = "yes"      -- Always show sign column
 opt.number = true           -- Show line numbers
 opt.relativenumber = true   -- Show relative line numbers
@@ -59,6 +50,21 @@ opt.listchars = {
 opt.splitbelow = true       -- Open horizontal splits below
 opt.splitright = true       -- Open vertical splits to the right
 opt.splitkeep = "screen"    -- Keep text on screen when splitting
+opt.laststatus = 2          -- Always show statusline for each window (better separator visibility)
+opt.fillchars = {
+  horiz = "─",
+  horizup = "┴",
+  horizdown = "┬",
+  vert = "│",
+  vertleft = "┤",
+  vertright = "├",
+  verthoriz = "┼",
+  eob = " ",           -- End of buffer character
+  diff = "╱",          -- Diff mode fill
+  fold = " ",          -- Folding fill
+  foldsep = "│",       -- Fold column separator
+  msgsep = "─",        -- Message separator
+}
 
 -- Enhanced completion
 opt.completeopt = "menu,menuone,noselect,preview"

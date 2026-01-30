@@ -8,6 +8,10 @@ vim.keymap.set("n", "<leader>e", function() require("snacks").explorer.open() en
 
 -- Terminal
 vim.keymap.set("n", "<leader>tt", ":term<CR>", { silent = true, desc = "Open terminal" })
+-- Exit terminal mode with ESC (instead of <C-\><C-n>)
+vim.keymap.set("t", "<Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
+-- Optional: Use double ESC if you need to send ESC to the terminal program
+vim.keymap.set("t", "<Esc><Esc>", "<Esc>", { desc = "Send ESC to terminal" })
 
 -- Copilot
 vim.keymap.set("i", "<C-y>", "copilot#Accept('<CR>')", { silent = true, noremap = true, expr = true, desc = "Accept copilot" })

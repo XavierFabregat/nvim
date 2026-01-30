@@ -1,49 +1,5 @@
--- Smart spell checking for comments and strings
+-- Native spell checking with smart auto-enable for text files
 return {
-  {
-    "lewis6991/spellsitter.nvim",
-    event = { "BufReadPre", "BufNewFile" },
-    config = function()
-      require("spellsitter").setup({
-        -- Enable spell checking for these filetypes
-        enable = true,
-        -- Debug mode
-        debug = false,
-        -- Spell check these capture groups
-        captures = {
-          -- Comments
-          "comment",
-          -- Strings  
-          "string",
-          -- Documentation
-          "doc",
-          "documentation",
-          -- Markdown-specific
-          "text",
-          "markdown",
-        },
-        -- Additional spell checking options
-        spellcheck_lang = "en",
-        -- Ignored patterns
-        ignored_patterns = {
-          -- URLs
-          "https?://[%w-_%.%?%.:/%+=&]+",
-          -- Email addresses
-          "[%w-_%.%+]+@[%w-_%.]+%.[%w-_%.]+",
-          -- File paths
-          "[%w-_%.%/]+%.[%w-_%.]+",
-          -- Hex colors
-          "#[0-9a-fA-F]+",
-          -- Numbers with units
-          "%d+[px|em|rem|%|s|ms|kb|mb|gb]",
-          -- Common code patterns
-          "%w+%(%)",
-          "%w+%[%]",
-          "%w+%{%}",
-        },
-      })
-    end,
-  },
   {
     "nvim-treesitter/nvim-treesitter",
     opts = function(_, opts)
@@ -54,6 +10,30 @@ return {
         "markdown",
         "markdown_inline",
       })
+    end,
+  },
+  -- Auto-enable spell checking for text-based files
+  {
+    "LazyVim/LazyVim",
+    opts = function()
+      -- Enable spell checking for specific filetypes
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = { "markdown", "text", "gitcommit", "NeogitCommitMessage" },
+        callback = function()
+          vim.opt_local.spell = true
+          vim.opt_local.spelllang = "en_us"
+        end,
+      })
+
+      -- Spell check keybindings
+      vim.keymap.set("n", "<leader>us", function()
+        vim.opt.spell = not vim.opt.spell:get()
+        if vim.opt.spell:get() then
+          vim.notify("Spell check enabled", vim.log.levels.INFO)
+        else
+          vim.notify("Spell check disabled", vim.log.levels.INFO)
+        end
+      end, { desc = "Toggle Spell Check" })
     end,
   },
 }
