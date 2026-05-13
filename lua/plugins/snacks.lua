@@ -37,7 +37,7 @@ return {
       enabled = true,
       icon = " ",
     },
-    picker = { 
+    picker = {
       enabled = true,
       win = {
         input = {
@@ -45,6 +45,12 @@ return {
             ["<C-j>"] = { "move_down", mode = { "i", "n" } },
             ["<C-k>"] = { "move_up", mode = { "i", "n" } },
           },
+        },
+      },
+      sources = {
+        explorer = {
+          hidden = true,
+          ignored = true,
         },
       },
     },
