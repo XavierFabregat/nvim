@@ -1,12 +1,49 @@
 -- DIY Spotify control for macOS via AppleScript (osascript).
--- Transport + a live status float, under the <leader>m namespace.
--- Roadmap & ideas: see SPOTIFY.md.
+-- Transport, a live status float, statusline now-playing and track-change toasts,
+-- all under the <leader>m namespace. Roadmap & ideas: see SPOTIFY.md.
 
 local M = {}
 
--- AppleScript: returns linefeed-separated fields, or "not_running".
+-- Tweakables.
+M.config = {
+  statusline = true, -- now-playing component (implies the background poller)
+  notify_on_change = true, -- toast when the track changes
+  poll = {
+    float_ms = 1000, -- cadence while the status float is open
+    active_ms = 2000, -- ambient cadence (statusline/toast) while nvim is focused
+    idle_ms = 10000, -- relaxed cadence when Spotify is closed
+  },
+  refocus_terminal = true, -- after a URI-play, re-focus the terminal (Spotify steals it)
+  terminal_app = nil, -- auto-detected from $TERM_PROGRAM; set e.g. "Warp" to override
+}
+
+-- Latest status, refreshed by the poller. Read by the statusline component.
+M.current = nil
+
+local VOLUME_STEP = 10
+local SEEK_STEP = 10
+
+-- $TERM_PROGRAM -> macOS app name, for bouncing focus back to the terminal after
+-- Spotify steals it on a URI-play.
+local TERM_APPS = {
+  WarpTerminal = "Warp",
+  iTerm = "iTerm",
+  ["iTerm.app"] = "iTerm",
+  Apple_Terminal = "Terminal",
+  ghostty = "Ghostty",
+  WezTerm = "WezTerm",
+  kitty = "kitty",
+  alacritty = "Alacritty",
+  vscode = "Code",
+}
+
+local function terminal_app()
+  return M.config.terminal_app or TERM_APPS[vim.env.TERM_PROGRAM or ""]
+end
+
+-- AppleScript: linefeed-separated fields, or "not_running".
 -- `is running` does not launch Spotify, so a closed app stays closed.
--- NOTE: `st`/short tokens like it are AppleScript reserved words, hence verbose names.
+-- NOTE: short tokens like `st` are AppleScript reserved words, hence verbose names.
 local STATUS_SCRIPT = [[
 if application "Spotify" is running then
   tell application "Spotify"
@@ -16,7 +53,8 @@ if application "Spotify" is running then
     set tAlbum to album of current track
     set pPos to player position
     set tDur to (duration of current track) / 1000
-    return pState & linefeed & tName & linefeed & tArtist & linefeed & tAlbum & linefeed & pPos & linefeed & tDur
+    set tId to id of current track
+    return pState & linefeed & tName & linefeed & tArtist & linefeed & tAlbum & linefeed & pPos & linefeed & tDur & linefeed & tId
   end tell
 else
   return "not_running"
@@ -24,6 +62,9 @@ end if
 ]]
 
 local STATE_ICON = { playing = "▶ Playing", paused = "⏸ Paused", stopped = "⏹ Stopped" }
+local HINT = "  space ⏯  ·  h/l ⏮⏭  ·  +/- vol  ·  s/r  ·  y copy"
+
+-- ── AppleScript helpers ──────────────────────────────────────────────────────
 
 -- Run an arbitrary AppleScript, calling cb(trimmed_stdout) on success.
 local function osa(script, cb)
@@ -43,6 +84,13 @@ end
 local function tell(body, cb)
   osa('tell application "Spotify" to ' .. body, cb)
 end
+
+-- spotify:track:ID -> https://open.spotify.com/track/ID
+local function uri_to_url(uri)
+  return (uri:gsub("spotify:(%w+):(%w+)", "https://open.spotify.com/%1/%2"))
+end
+
+-- ── Formatting ───────────────────────────────────────────────────────────────
 
 -- Spotify returns floats using the system locale, so a comma decimal is possible.
 local function to_num(v)
@@ -75,23 +123,39 @@ local function build_lines(info)
     "",
     "  " .. fmt_time(info.pos) .. " " .. progress_bar(info.pos, info.dur, 22) .. " " .. fmt_time(info.dur),
     "",
+    HINT,
   }
 end
 
-local state = { win = nil, buf = nil, timer = nil }
+-- ── Poller (single shared, refcounted, focus-gated) ──────────────────────────
 
-local POLL_MS = 1000
+local poller = {
+  timer = nil,
+  running_ms = nil,
+  focused = true,
+  subs = {}, -- name -> requested interval (ms)
+  last_id = nil, -- for track-change detection
+  primed = false, -- skip the toast on the very first poll
+}
 
-local function stop()
-  if state.timer then
-    state.timer:stop()
-    if not state.timer:is_closing() then
-      state.timer:close()
-    end
-    state.timer = nil
-  end
-  state.win, state.buf = nil, nil
+local state = { win = nil, buf = nil } -- the status float
+
+-- Forward declarations (mutual references between poller pieces).
+local poll_once, reschedule, poke
+
+local function subscribe(name, ms)
+  poller.subs[name] = ms
+  reschedule()
 end
+
+local function unsubscribe(name)
+  poller.subs[name] = nil
+  reschedule()
+end
+
+-- ── Float window ─────────────────────────────────────────────────────────────
+
+local NS = vim.api.nvim_create_namespace("spotify_float")
 
 -- Geometry that re-centres for the current line set (no `style`, so it is also
 -- valid for nvim_win_set_config when resizing an open window).
@@ -114,6 +178,9 @@ local function set_lines(lines)
   vim.bo[state.buf].modifiable = true
   vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, lines)
   vim.bo[state.buf].modifiable = false
+  -- Dim the keybind hint (last line).
+  vim.api.nvim_buf_clear_namespace(state.buf, NS, 0, -1)
+  vim.api.nvim_buf_set_extmark(state.buf, NS, #lines - 1, 0, { line_hl_group = "Comment" })
 end
 
 local function open(lines)
@@ -128,24 +195,61 @@ local function open(lines)
 
   set_lines(lines)
 
+  -- Mini-player controls (act, then poke the poller for snappy feedback).
+  local act = function(fn)
+    return function()
+      fn()
+      poke()
+    end
+  end
+  -- stylua: ignore start
+  local maps = {
+    ["<Space>"] = act(M.play_pause),
+    ["l"]       = act(M.next),
+    ["h"]       = act(M.previous),
+    ["+"]       = act(function() M.volume(VOLUME_STEP) end),
+    ["="]       = act(function() M.volume(VOLUME_STEP) end),
+    ["-"]       = act(function() M.volume(-VOLUME_STEP) end),
+    ["s"]       = act(M.toggle_shuffle),
+    ["r"]       = act(M.toggle_repeat),
+    ["y"]       = function() M.copy_link() end,
+  }
+  -- stylua: ignore end
+  for lhs, fn in pairs(maps) do
+    vim.keymap.set("n", lhs, fn, { buffer = buf, nowait = true, silent = true })
+  end
   for _, key in ipairs({ "q", "<Esc>" }) do
     vim.keymap.set("n", key, function()
       vim.api.nvim_win_close(state.win, true)
     end, { buffer = buf, nowait = true, silent = true })
   end
-  -- Stop polling once the float is gone.
-  vim.api.nvim_create_autocmd("BufWipeout", { buffer = buf, once = true, callback = stop })
+
+  -- Drop the float's fast subscription once it's gone.
+  vim.api.nvim_create_autocmd("BufWipeout", {
+    buffer = buf,
+    once = true,
+    callback = function()
+      state.win, state.buf = nil, nil
+      unsubscribe("float")
+    end,
+  })
+end
+
+local function float_open()
+  return state.win ~= nil and vim.api.nvim_win_is_valid(state.win)
 end
 
 local function render(info)
   local lines = build_lines(info)
-  if state.win and vim.api.nvim_win_is_valid(state.win) then
+  if float_open() then
     set_lines(lines)
     vim.api.nvim_win_set_config(state.win, geometry(lines))
   else
     open(lines)
   end
 end
+
+-- ── Fetch + poll loop ────────────────────────────────────────────────────────
 
 local function fetch(cb)
   vim.system({ "osascript", "-e", STATUS_SCRIPT }, { text = true }, function(res)
@@ -165,11 +269,114 @@ local function fetch(cb)
           album = vim.trim(out[4] or ""),
           pos = out[5],
           dur = out[6],
+          id = vim.trim(out[7] or ""),
         })
       end
     end)
   end)
 end
+
+local function notify_track(info)
+  local msg = info.track .. "\n" .. info.artist
+  if info.album ~= "" then
+    msg = msg .. " · " .. info.album
+  end
+  if _G.Snacks and Snacks.notify then
+    Snacks.notify(msg, { title = "Now Playing", icon = "♫ " })
+  else
+    vim.notify("♫ " .. info.track .. " — " .. info.artist, vim.log.levels.INFO, { title = "Now Playing" })
+  end
+end
+
+poll_once = function()
+  fetch(function(info)
+    if info == nil then
+      reschedule()
+      return
+    end
+    M.current = info
+
+    -- Track-change toast (skips the first poll so it stays quiet on startup).
+    local id = not info.not_running and info.id ~= "" and info.id or nil
+    if id and id ~= poller.last_id then
+      if poller.primed and M.config.notify_on_change then
+        notify_track(info)
+      end
+      poller.last_id = id
+    end
+    poller.primed = true
+
+    if float_open() then
+      render(info)
+    end
+    if M.config.statusline then
+      local ok, lualine = pcall(require, "lualine")
+      if ok then
+        lualine.refresh()
+      else
+        vim.cmd("redrawstatus")
+      end
+    end
+
+    -- Spotify may have just opened/closed: re-evaluate cadence.
+    reschedule()
+  end)
+end
+
+reschedule = function()
+  -- Fastest interval any active subscriber asked for.
+  local ms
+  for _, want in pairs(poller.subs) do
+    if not ms or want < ms then
+      ms = want
+    end
+  end
+
+  -- Stop entirely when nothing wants polling or nvim isn't focused.
+  if not ms or not poller.focused then
+    if poller.timer then
+      poller.timer:stop()
+      if not poller.timer:is_closing() then
+        poller.timer:close()
+      end
+      poller.timer = nil
+    end
+    poller.running_ms = nil
+    return
+  end
+
+  -- Relax cadence when Spotify is closed (unless the float wants to stay live).
+  if not float_open() and M.current and M.current.not_running then
+    ms = math.max(ms, M.config.poll.idle_ms)
+  end
+
+  if poller.timer and poller.running_ms == ms then
+    return -- already at the right cadence
+  end
+  if poller.timer then
+    poller.timer:stop()
+    if not poller.timer:is_closing() then
+      poller.timer:close()
+    end
+    poller.timer = nil
+  end
+  poller.timer = vim.uv.new_timer()
+  poller.running_ms = ms
+  poller.timer:start(0, ms, function()
+    vim.schedule(poll_once)
+  end)
+end
+
+-- Nudge a fresh poll shortly after an in-float action so it feels instant.
+poke = function()
+  vim.defer_fn(function()
+    if float_open() then
+      poll_once()
+    end
+  end, 200)
+end
+
+-- ── Public actions ───────────────────────────────────────────────────────────
 
 function M.status()
   fetch(function(info, err)
@@ -177,32 +384,45 @@ function M.status()
       vim.notify("Spotify: " .. (err or "osascript failed"), vim.log.levels.ERROR)
       return
     end
-    render(info)
-
-    -- Start polling so position advances and song changes show live.
-    if not state.timer then
-      state.timer = vim.uv.new_timer()
-      state.timer:start(POLL_MS, POLL_MS, function()
-        vim.schedule(function()
-          if not (state.win and vim.api.nvim_win_is_valid(state.win)) then
-            stop()
-            return
-          end
-          fetch(function(next_info)
-            if next_info then
-              render(next_info)
-            end
-          end)
-        end)
-      end)
-    end
+    M.current = info
+    render(info) -- opens the float
+    subscribe("float", M.config.poll.float_ms)
   end)
 end
 
--- ── Transport ──────────────────────────────────────────────────────────────
+function M.copy_link()
+  fetch(function(info, err)
+    if not info or info.not_running or info.id == "" then
+      vim.notify("Spotify: nothing playing", vim.log.levels.WARN)
+      return
+    end
+    local url = uri_to_url(info.id)
+    vim.fn.setreg("+", url)
+    vim.fn.setreg('"', url)
+    vim.notify("Spotify link copied:\n" .. info.track, vim.log.levels.INFO, { title = "Spotify" })
+  end)
+end
 
-local VOLUME_STEP = 10
-local SEEK_STEP = 10
+-- Statusline component text (empty string => hidden).
+function M.statusline()
+  local c = M.current
+  if not (c and not c.not_running and c.state ~= "stopped" and c.track ~= "") then
+    return ""
+  end
+  local icon = c.state == "playing" and "♫" or "⏸"
+  local text = icon .. " " .. c.track .. " — " .. c.artist
+  if vim.fn.strchars(text) > 45 then
+    text = vim.fn.strcharpart(text, 0, 44) .. "…"
+  end
+  return text
+end
+
+function M.playing()
+  local c = M.current
+  return c ~= nil and not c.not_running and c.state ~= "stopped" and c.track ~= ""
+end
+
+-- ── Transport ──────────────────────────────────────────────────────────────
 
 function M.play_pause()
   tell("playpause")
@@ -226,6 +446,26 @@ end
 
 function M.stop()
   tell("stop")
+end
+
+-- Play a track URI, optionally within a context (playlist/album) URI.
+-- Spotify grabs focus on a URI-play, so we bounce focus back to the terminal after.
+function M.play_uri(track_uri, context_uri)
+  local primary = track_uri or context_uri
+  if not primary then
+    return vim.notify("Spotify: nothing to play", vim.log.levels.WARN)
+  end
+  local play = 'play track "' .. primary .. '"'
+  if track_uri and context_uri then
+    play = 'play track "' .. track_uri .. '" in context "' .. context_uri .. '"'
+  end
+  local lines = { 'tell application "Spotify" to ' .. play }
+  local app = terminal_app()
+  if M.config.refocus_terminal ~= false and app then
+    lines[#lines + 1] = "delay 0.12"
+    lines[#lines + 1] = 'tell application "' .. app .. '" to activate'
+  end
+  osa(table.concat(lines, "\n"))
 end
 
 -- delta is a signed integer (percentage points); result is clamped to 0–100.
@@ -306,17 +546,36 @@ local ACTIONS = {
   stop = M.stop,
   shuffle = M.toggle_shuffle,
   ["repeat"] = M.toggle_repeat,
+  copy = M.copy_link,
+  link = M.copy_link,
+  search = function(q)
+    require("config.spotify_search").open(q)
+  end,
   volume = function(v)
     M.volume(tonumber(v) or VOLUME_STEP)
   end,
   seek = function(v)
     M.seek(tonumber(v) or SEEK_STEP)
   end,
+  playlists = function()
+    require("config.spotify_library").playlists()
+  end,
+  login = function()
+    require("config.spotify_auth").login()
+  end,
+  logout = function()
+    require("config.spotify_auth").logout()
+  end,
 }
 
 if vim.fn.has("mac") == 1 then
   vim.api.nvim_create_user_command("Spotify", function(opts)
     local action = opts.fargs[1] or "status"
+    if action == "search" then
+      -- Join the rest so multi-word queries work: `:Spotify search bohemian rhapsody`.
+      require("config.spotify_search").open(table.concat(vim.list_slice(opts.fargs, 2), " "))
+      return
+    end
     local fn = ACTIONS[action]
     if fn then
       fn(opts.fargs[2])
@@ -325,7 +584,7 @@ if vim.fn.has("mac") == 1 then
     end
   end, {
     nargs = "*",
-    desc = "Control Spotify (status|playpause|next|prev|stop|shuffle|repeat|volume|seek)",
+    desc = "Control Spotify (status|playpause|next|prev|stop|shuffle|repeat|volume|seek|copy)",
     complete = function(arglead)
       return vim.tbl_filter(function(a)
         return a:find(arglead, 1, true) == 1
@@ -348,13 +607,37 @@ if vim.fn.has("mac") == 1 then
   map("<leader>mn", M.next,           "Next track")
   map("<leader>mb", M.previous,       "Previous track")
   map("<leader>mx", M.stop,           "Stop")
+  map("<leader>my", M.copy_link,      "Copy track link")
   map("<leader>mk", function() M.volume(VOLUME_STEP) end,  "Volume up")
   map("<leader>mj", function() M.volume(-VOLUME_STEP) end, "Volume down")
   map("<leader>ml", function() M.seek(SEEK_STEP) end,      "Seek forward")
   map("<leader>mh", function() M.seek(-SEEK_STEP) end,     "Seek backward")
   map("<leader>mz", M.toggle_shuffle, "Toggle shuffle")
   map("<leader>mr", M.toggle_repeat,  "Toggle repeat")
+  map("<leader>m/", function() require("config.spotify_search").open() end, "Search songs")
+  map("<leader>mP", function() require("config.spotify_library").playlists() end, "Playlists")
   -- stylua: ignore end
+
+  -- Pause polling while nvim is in the background; resume on return without
+  -- toasting for a song that changed while we were away.
+  vim.api.nvim_create_autocmd("FocusLost", {
+    callback = function()
+      poller.focused = false
+      reschedule()
+    end,
+  })
+  vim.api.nvim_create_autocmd("FocusGained", {
+    callback = function()
+      poller.focused = true
+      poller.primed = false
+      reschedule()
+    end,
+  })
+
+  -- Start the ambient poller if anything passive wants live data.
+  if M.config.statusline or M.config.notify_on_change then
+    subscribe("ambient", M.config.poll.active_ms)
+  end
 end
 
 return M

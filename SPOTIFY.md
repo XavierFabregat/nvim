@@ -33,27 +33,82 @@ Legend: ✅ done · 🟢 AppleScript (cheap) · 🔵 Web API (needs OAuth)
 
 ## 2. Display & ambient — 🟢
 
-- [x] Live status float (`:Spotify` / `<leader>ms`) — polls every 1s, shows
-      state, track/artist/album, and a progress bar; auto-stops on close
-- [ ] Now-playing component in statusline / winbar (always visible)
-- [ ] Toast notification when the track changes (background poller)
-- [ ] Album art inside the float (image.nvim / kitty / sixel / chafa)
-- [ ] In-float mini-player keymaps (space = pause, j/k = skip, etc.)
-- [ ] Copy current track's Spotify URL / share link to clipboard
+- [x] Live status float (`:Spotify` / `<leader>ms`) — shows state,
+      track/artist/album and a progress bar; live via the shared poller
+- [x] Now-playing component in the statusline (lualine_x) — green, click to
+      play/pause, hidden when stopped/closed (`lua/plugins/lualine.lua`)
+- [x] Toast notification when the track changes (shared poller, deduped by id)
+- [x] In-float mini-player keymaps — `space` play/pause, `h`/`l` prev/next,
+      `+`/`-` volume, `s`/`r` shuffle/repeat, `y` copy link, `q` close
+- [x] Copy current track's share link — `<leader>my`, float `y`, `:Spotify copy`
+- [ ] Album art inside the float — parked: Warp has no inline-image protocol;
+      would need `chafa` (coloured Unicode blocks) or a kitty/ghostty/wezterm switch
+
+### Architecture note
+
+A single **refcounted, focus-gated poller** drives the float, statusline and
+toast (no competing timers). It polls at the fastest interval any subscriber
+asks for (float 1s, ambient 2s), backs off to 10s when Spotify is closed, and
+stops entirely when nvim loses focus. Tune via `M.config` at the top of
+`lua/config/spotify.lua`.
 
 ## 3. Play specific things — 🟢
 
 - [ ] Paste a `spotify:` URI or share link → play it immediately
 - [ ] Quick-launch picker of hardcoded favourite playlist/album URIs
 
-## 4. Search & library — 🔵 (needs Web API / OAuth)
+## 4. Search & library — 🔵 (needs Web API)
 
-- [ ] Search tracks / albums / playlists → snacks/telescope picker → play
-- [ ] Browse your playlists → pick → play
-- [ ] Like / save current track to library (one key)
-- [ ] Add track to the queue (AppleScript can't queue — API only)
+- [x] **Search tracks → play** — live snacks picker (`<leader>m/`, `:Spotify
+      search <query>`), `<CR>` plays the pick. See "Search setup" below.
+- [x] **Browse your playlists → play** — `<leader>mP` / `:Spotify playlists`.
+      PKCE login (once), reads `/me/playlists`, plays via AppleScript. See
+      "Library setup" below.
+- [ ] Like / save current track to library (add scope + endpoint)
+- [ ] Add track to the queue (`me/player/queue`, needs Premium)
 - [ ] Recently played / recommendations picker
-- [ ] Device switching (Spotify Connect: laptop ↔ phone ↔ speaker)
+- [ ] Device switching (Spotify Connect — needs Premium)
+
+### Search setup
+
+Search uses the **Client Credentials** flow — an app-only token, no user login,
+no redirect server. We search over HTTP and **play the result via AppleScript**
+(`play track <uri>`). The flip side: client-credentials can't touch your
+library/playlists/queue — those need the heavier user OAuth (PKCE) still to come.
+
+One-off: create an app at developer.spotify.com, then export your credentials
+(e.g. in `~/.zshrc`, never committed):
+
+```sh
+export SPOTIFY_CLIENT_ID="…"
+export SPOTIFY_CLIENT_SECRET="…"
+```
+
+The token is cached in memory for its ~1h lifetime and silently re-fetched.
+Code: `lua/config/spotify_search.lua`.
+
+### Library setup (PKCE, for playlists)
+
+Reading your library needs **user OAuth** — Authorization Code + **PKCE** (no
+secret). Hybrid design: **read via the Web API, play via AppleScript** — so no
+Premium needed and the existing playback path is reused.
+
+One-off: in the same Spotify app, add this exact **Redirect URI**:
+
+```
+http://127.0.0.1:8888/callback
+```
+
+Then `<leader>mP` (or `:Spotify playlists`) triggers a one-time browser login: a
+local loopback server on `127.0.0.1:8888` catches the redirect, exchanges the
+code for tokens, and stores them at `stdpath("data")/spotify_nvim_token.json`
+(chmod 600, never committed). The access token is silently refreshed thereafter.
+
+- `:Spotify login` / `:Spotify logout` — manage the session.
+- Scopes requested: `playlist-read-private playlist-read-collaborative
+  user-library-read`.
+- Code: `lua/config/spotify_auth.lua` (OAuth) + `lua/config/spotify_library.lua`
+  (playlist picker).
 
 ## 5. Spicy / nice-to-have
 
