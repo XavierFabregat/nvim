@@ -2,3 +2,4 @@
 require("config.lazy")
 require("config.highlights")
 require("config.colorscheme")
+require("config.spotify")
