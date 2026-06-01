@@ -61,8 +61,24 @@ else
 end if
 ]]
 
-local STATE_ICON = { playing = "▶ Playing", paused = "⏸ Paused", stopped = "⏹ Stopped" }
-local HINT = "  space ⏯  ·  h/l ⏮⏭  ·  +/- vol  ·  s/r  ·  y copy"
+local STATE_GLYPH = { playing = "▶", paused = "⏸", stopped = "⏹" }
+local STATE_TEXT = { playing = "Playing", paused = "Paused", stopped = "Stopped" }
+local HINT = "  space ⏯   ·   h/l ⏮ ⏭   ·   +/- vol   ·   s/r   ·   y copy"
+
+-- Spotify-flavoured highlight groups, re-applied when the colorscheme changes.
+local function setup_highlights()
+  local set = vim.api.nvim_set_hl
+  set(0, "SpotifyTitle", { fg = "#1db954", bold = true })
+  set(0, "SpotifyState", { fg = "#1db954", bold = true })
+  set(0, "SpotifyArtist", { link = "Comment" })
+  set(0, "SpotifyAlbum", { link = "NonText" })
+  set(0, "SpotifyTime", { link = "Comment" })
+  set(0, "SpotifyHint", { fg = "#6b7280", italic = true })
+  set(0, "SpotifyBarFill", { fg = "#1db954" })
+  set(0, "SpotifyBarEmpty", { fg = "#3a3a3a" })
+end
+setup_highlights()
+vim.api.nvim_create_autocmd("ColorScheme", { callback = setup_highlights })
 
 -- ── AppleScript helpers ──────────────────────────────────────────────────────
 
@@ -102,29 +118,61 @@ local function fmt_time(seconds)
   return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
 end
 
-local function progress_bar(pos, dur, width)
+-- A progress row as styled segments: time · bar (green fill, dim remainder) · time.
+local function progress_segs(pos, dur, width)
   pos, dur = to_num(pos), to_num(dur)
   local filled = dur > 0 and math.floor((pos / dur) * width + 0.5) or 0
-  filled = math.max(1, math.min(width, filled))
-  return string.rep("━", filled - 1) .. "●" .. string.rep("─", width - filled)
+  filled = math.max(0, math.min(width, filled))
+  return {
+    { "  ", nil },
+    { fmt_time(pos), "SpotifyTime" },
+    { " ▕", "SpotifyBarEmpty" },
+    { string.rep("█", filled), "SpotifyBarFill" },
+    { string.rep("░", width - filled), "SpotifyBarEmpty" },
+    { "▏ ", "SpotifyBarEmpty" },
+    { fmt_time(dur), "SpotifyTime" },
+  }
 end
 
-local function build_lines(info)
+-- The float as rows; each row is a list of { text, highlight } segments.
+local function build_rows(info)
   if info.not_running then
-    return { "", "  Spotify isn't running.", "" }
+    return {
+      { { "" } },
+      { { "  Spotify isn't running.", "SpotifyArtist" } },
+      { { "" } },
+    }
   end
   return {
-    "",
-    "  " .. (STATE_ICON[info.state] or info.state),
-    "",
-    "  ♫  " .. info.track,
-    "  ♪  " .. info.artist,
-    "  💿 " .. info.album,
-    "",
-    "  " .. fmt_time(info.pos) .. " " .. progress_bar(info.pos, info.dur, 22) .. " " .. fmt_time(info.dur),
-    "",
-    HINT,
+    { { "" } },
+    { { "  " .. (STATE_GLYPH[info.state] or "•") .. "  " .. (STATE_TEXT[info.state] or info.state), "SpotifyState" } },
+    { { "" } },
+    { { "  ♫  " .. info.track, "SpotifyTitle" } },
+    { { "  ♪  " .. info.artist, "SpotifyArtist" } },
+    { { "  💿 " .. info.album, "SpotifyAlbum" } },
+    { { "" } },
+    progress_segs(info.pos, info.dur, 24),
+    { { "" } },
+    { { HINT, "SpotifyHint" } },
   }
+end
+
+-- Flatten rows into buffer lines + a list of { row, col0, col1, hl } highlights.
+local function assemble(rows)
+  local lines, hls = {}, {}
+  for r, segs in ipairs(rows) do
+    local line, col = "", 0
+    for _, seg in ipairs(segs) do
+      local text, hl = seg[1], seg[2]
+      if hl and text ~= "" then
+        hls[#hls + 1] = { r - 1, col, col + #text, hl }
+      end
+      line = line .. text
+      col = col + #text
+    end
+    lines[r] = line
+  end
+  return lines, hls
 end
 
 -- ── Poller (single shared, refcounted, focus-gated) ──────────────────────────
@@ -174,26 +222,31 @@ local function geometry(lines)
   }
 end
 
-local function set_lines(lines)
+-- Write rows to the buffer with per-segment highlighting; returns the lines.
+local function apply(rows)
+  local lines, hls = assemble(rows)
   vim.bo[state.buf].modifiable = true
   vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, lines)
   vim.bo[state.buf].modifiable = false
-  -- Dim the keybind hint (last line).
   vim.api.nvim_buf_clear_namespace(state.buf, NS, 0, -1)
-  vim.api.nvim_buf_set_extmark(state.buf, NS, #lines - 1, 0, { line_hl_group = "Comment" })
+  for _, h in ipairs(hls) do
+    vim.api.nvim_buf_set_extmark(state.buf, NS, h[1], h[2], { end_col = h[3], hl_group = h[4] })
+  end
+  return lines
 end
 
-local function open(lines)
+local function open(rows)
   local buf = vim.api.nvim_create_buf(false, true)
   vim.bo[buf].bufhidden = "wipe"
   state.buf = buf
 
+  local lines = assemble(rows)
   local cfg = geometry(lines)
-  cfg.style, cfg.border, cfg.title, cfg.title_pos = "minimal", "rounded", " Spotify ", "center"
+  cfg.style, cfg.border, cfg.title, cfg.title_pos = "minimal", "rounded", "  Spotify ", "center"
   state.win = vim.api.nvim_open_win(buf, true, cfg)
   vim.wo[state.win].winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder"
 
-  set_lines(lines)
+  apply(rows)
 
   -- Mini-player controls (act, then poke the poller for snappy feedback).
   local act = function(fn)
@@ -240,12 +293,12 @@ local function float_open()
 end
 
 local function render(info)
-  local lines = build_lines(info)
+  local rows = build_rows(info)
   if float_open() then
-    set_lines(lines)
+    local lines = apply(rows)
     vim.api.nvim_win_set_config(state.win, geometry(lines))
   else
-    open(lines)
+    open(rows)
   end
 end
 

@@ -84,14 +84,17 @@ function M.playlists()
     end
     Snacks.picker.pick({
       source = "spotify_playlists",
-      title = "Spotify Playlists",
+      title = "  Spotify Playlists",
       items = items,
       layout = { preset = "dropdown", preview = false },
       format = function(item)
-        local ret = { { item.name, "SnacksPickerLabel" } }
-        ret[#ret + 1] = { "   " .. item.total .. " tracks", "SnacksPickerComment" }
+        local ret = {
+          { "  ", "SpotifyTitle" },
+          { item.name, "SpotifyTitle" },
+          { "   " .. item.total .. " tracks", "SpotifyArtist" },
+        }
         if item.owner ~= "" then
-          ret[#ret + 1] = { "  ·  " .. item.owner, "NonText" }
+          ret[#ret + 1] = { "  ·  " .. item.owner, "SpotifyAlbum" }
         end
         return ret
       end,

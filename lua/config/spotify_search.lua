@@ -88,7 +88,7 @@ function M.open(initial)
 
   Snacks.picker.pick({
     source = "spotify_search",
-    title = "Spotify Search",
+    title = "  Spotify Search",
     live = true, -- re-query the API on every keystroke
     search = initial or "",
     layout = { preset = "dropdown", preview = false },
@@ -123,10 +123,13 @@ function M.open(initial)
     end,
     format = function(item)
       local t = item.track
-      local ret = { { t.name, "SnacksPickerLabel" } }
-      ret[#ret + 1] = { "   " .. t.artist, "SnacksPickerComment" }
+      local ret = {
+        { "  ", "SpotifyTitle" },
+        { t.name, "SpotifyTitle" },
+        { "   " .. t.artist, "SpotifyArtist" },
+      }
       if t.album ~= "" then
-        ret[#ret + 1] = { "  ·  " .. t.album, "NonText" }
+        ret[#ret + 1] = { "  ·  " .. t.album, "SpotifyAlbum" }
       end
       return ret
     end,
