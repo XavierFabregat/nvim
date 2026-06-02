@@ -65,7 +65,7 @@ end if
 
 local STATE_GLYPH = { playing = "▶", paused = "⏸", stopped = "⏹" }
 local STATE_TEXT = { playing = "Playing", paused = "Paused", stopped = "Stopped" }
-local HINT = "  space ⏯  ·  h/l ⏮ ⏭  ·  +/- vol  ·  s/r  ·  f ♥  ·  w 🎤  ·  y copy"
+local HINT = "  space ⏯  ·  h/l ⏮ ⏭  ·  +/- vol  ·  s/r  ·  f ♥  ·  w 🎤  ·  o ☰  ·  y copy"
 
 -- Spotify-flavoured highlight groups, re-applied when the colorscheme changes.
 local function setup_highlights()
@@ -79,6 +79,10 @@ local function setup_highlights()
   set(0, "SpotifyBarFill", { fg = "#1db954" })
   set(0, "SpotifyBarEmpty", { fg = "#3a3a3a" })
   set(0, "SpotifyLyricDim", { fg = "#5c6370" }) -- non-active lyric lines
+  -- Search result kind tags (distinct colours so track/playlist/album are clear).
+  set(0, "SpotifyKindTrack", { fg = "#1db954", bold = true }) -- green
+  set(0, "SpotifyKindPlaylist", { fg = "#38bdf8", bold = true }) -- sky blue
+  set(0, "SpotifyKindAlbum", { fg = "#f59e0b", bold = true }) -- amber
 end
 setup_highlights()
 vim.api.nvim_create_autocmd("ColorScheme", { callback = setup_highlights })
@@ -274,6 +278,7 @@ local function open(rows)
     ["y"]       = function() M.copy_link() end,
     ["f"]       = function() require("config.spotify_library").toggle_save_current() end,
     ["w"]       = function() require("config.spotify_lyrics").toggle() end,
+    ["o"]       = function() require("config.spotify_library").now_context() end,
   }
   -- stylua: ignore end
   for lhs, fn in pairs(maps) do
@@ -694,6 +699,12 @@ local ACTIONS = {
   recent = function()
     require("config.spotify_library").recent()
   end,
+  context = function()
+    require("config.spotify_library").now_context()
+  end,
+  queue = function()
+    require("config.spotify_library").queue()
+  end,
   like = function()
     require("config.spotify_library").toggle_save_current()
   end,
@@ -763,6 +774,8 @@ if vim.fn.has("mac") == 1 then
   map("<leader>mR", function() require("config.spotify_library").recent() end, "Recently played")
   map("<leader>mf", function() require("config.spotify_library").toggle_save_current() end, "Like/unlike current")
   map("<leader>mw", function() require("config.spotify_lyrics").toggle() end, "Lyrics panel")
+  map("<leader>mo", function() require("config.spotify_library").now_context() end, "Browse current playlist/queue")
+  map("<leader>mq", function() require("config.spotify_library").queue() end, "Queue")
   -- stylua: ignore end
 
   -- Pause polling while nvim is in the background; resume on return without

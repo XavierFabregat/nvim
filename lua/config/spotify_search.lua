@@ -1,12 +1,21 @@
--- Spotify song search via the Web API (Client Credentials flow), played locally
--- via AppleScript. Requires SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in the
--- environment (see SPOTIFY.md §4). UI is a live snacks.nvim picker.
+-- Spotify search (tracks, playlists, albums) via the Web API Client Credentials
+-- flow — public search needs no user login. Results play locally via AppleScript;
+-- playlists/albums play in-context so the queue continues. UI is a live snacks
+-- picker. Requires SPOTIFY_CLIENT_ID/SECRET in the environment (see SPOTIFY.md).
 
 local M = {}
 
 local TOKEN_URL = "https://accounts.spotify.com/api/token"
-local SEARCH_URL = "https://api.spotify.com/v1/search"
-local SEARCH_LIMIT = 25
+local API = "https://api.spotify.com/v1"
+local SEARCH_TYPES = "track,playlist,album"
+local PER_TYPE = 10
+
+-- Fixed-width, colour-coded type tags (all 8 cols wide so names align).
+local KIND = {
+  track = { label = "track   ", hl = "SpotifyKindTrack" },
+  playlist = { label = "playlist", hl = "SpotifyKindPlaylist" },
+  album = { label = "album   ", hl = "SpotifyKindAlbum" },
+}
 
 -- In-memory token cache (no disk, no refresh token needed for client-credentials).
 local token = { value = nil, expires_at = 0 }
@@ -42,41 +51,115 @@ local function get_token(cb)
   end)
 end
 
--- cb(tracks) on success, cb(nil, err) on failure. Each track: {name, artist, album, uri}.
+local function api_get(path, cb)
+  get_token(function(tok, err)
+    if not tok then
+      return cb(nil, err)
+    end
+    vim.system(
+      { "curl", "-s", API .. path, "-H", "Authorization: Bearer " .. tok },
+      { text = true },
+      function(res)
+        vim.schedule(function()
+          local ok, data = pcall(vim.json.decode, res.stdout or "")
+          cb((ok and type(data) == "table") and data or nil)
+        end)
+      end
+    )
+  end)
+end
+
+-- vim.json.decode turns JSON null into vim.NIL (truthy userdata), so guard with
+-- type(x) == "table" before indexing anything that could be null.
+local function artist_names(obj)
+  local names = {}
+  if type(obj.artists) == "table" then
+    for _, a in ipairs(obj.artists) do
+      if type(a) == "table" and a.name then
+        names[#names + 1] = a.name
+      end
+    end
+  end
+  return table.concat(names, ", ")
+end
+
+-- Resolve the first track in a playlist/album so we can play it in-context.
+local function first_track(context_uri, cb)
+  local kind, id = context_uri:match("spotify:(%w+):(%w+)")
+  local path
+  if kind == "playlist" then
+    path = "/playlists/" .. id .. "/tracks?limit=1&fields=items(track(uri))"
+  elseif kind == "album" then
+    path = "/albums/" .. id .. "/tracks?limit=1"
+  else
+    return cb(nil)
+  end
+  api_get(path, function(data)
+    local it = data and data.items and data.items[1]
+    cb(it and ((it.track and it.track.uri) or it.uri) or nil)
+  end)
+end
+
+-- cb(items) | cb(nil, err). Items: { kind, name, sub, uri, text }.
 local function search(query, cb)
   get_token(function(tok, err)
     if not tok then
       return cb(nil, err)
     end
     vim.system({
-      "curl", "-s", "-G", SEARCH_URL,
+      "curl", "-s", "-G", API .. "/search",
       "--data-urlencode", "q=" .. query,
-      "-d", "type=track",
-      "-d", "limit=" .. SEARCH_LIMIT,
+      "-d", "type=" .. SEARCH_TYPES,
+      "-d", "limit=" .. PER_TYPE,
       "-H", "Authorization: Bearer " .. tok,
     }, { text = true }, function(res)
       vim.schedule(function()
         local ok, data = pcall(vim.json.decode, res.stdout or "")
-        if res.code ~= 0 or not ok or type(data) ~= "table" or not data.tracks then
+        if res.code ~= 0 or not ok or type(data) ~= "table" then
           return cb(nil, "search request failed")
         end
-        local tracks = {}
-        for _, t in ipairs(data.tracks.items or {}) do
-          local artists = {}
-          for _, a in ipairs(t.artists or {}) do
-            artists[#artists + 1] = a.name
+        local items = {}
+        for _, t in ipairs((data.tracks and data.tracks.items) or {}) do
+          if type(t) == "table" and t.uri then
+            local sub = artist_names(t)
+            items[#items + 1] = { kind = "track", name = t.name or "?", sub = sub, uri = t.uri, text = (t.name or "") .. " " .. sub }
           end
-          tracks[#tracks + 1] = {
-            name = t.name or "?",
-            artist = table.concat(artists, ", "),
-            album = (t.album and t.album.name) or "",
-            uri = t.uri,
-          }
         end
-        cb(tracks)
+        for _, p in ipairs((data.playlists and data.playlists.items) or {}) do
+          if type(p) == "table" and p.uri then
+            local owner = (type(p.owner) == "table" and p.owner.display_name) or ""
+            local total = (type(p.tracks) == "table" and p.tracks.total) or 0
+            items[#items + 1] = {
+              kind = "playlist",
+              name = p.name or "?",
+              sub = owner .. (total > 0 and ("  ·  " .. total .. " tracks") or ""),
+              uri = p.uri,
+              text = (p.name or "") .. " " .. owner,
+            }
+          end
+        end
+        for _, a in ipairs((data.albums and data.albums.items) or {}) do
+          if type(a) == "table" and a.uri then
+            local sub = artist_names(a)
+            items[#items + 1] = { kind = "album", name = a.name or "?", sub = sub, uri = a.uri, text = (a.name or "") .. " " .. sub }
+          end
+        end
+        cb(items)
       end)
     end)
   end)
+end
+
+local function play_item(item)
+  if item.kind == "track" then
+    require("config.spotify").play_uri(item.uri)
+  else
+    -- playlist/album: start the first track within the context so it continues
+    first_track(item.uri, function(track_uri)
+      require("config.spotify").play_uri(track_uri, item.uri)
+    end)
+  end
+  vim.notify("▶ " .. item.name, vim.log.levels.INFO, { title = "Spotify" })
 end
 
 -- Open the live search picker. `initial` optionally pre-fills the query.
@@ -97,12 +180,11 @@ function M.open(initial)
       if query == "" then
         return {}
       end
-      -- Async finder: kick off the search, suspend the picker's coroutine, then
-      -- emit items once the HTTP callback resumes us (the snacks await idiom).
+      -- Async finder: search, suspend the coroutine, emit items on resume.
       return function(cb)
         local results, ferr
-        search(query, function(tracks, err)
-          results, ferr = tracks, err
+        search(query, function(items, err)
+          results, ferr = items, err
           ctx.async:resume()
         end)
         ctx.async:suspend()
@@ -112,32 +194,28 @@ function M.open(initial)
           end)
           return
         end
-        for _, t in ipairs(results or {}) do
-          cb({
-            text = t.name .. " " .. t.artist .. " " .. t.album, -- what the matcher sees
-            track = t,
-            uri = t.uri,
-          })
+        for _, item in ipairs(results or {}) do
+          cb({ text = item.text, item = item })
         end
       end
     end,
-    format = function(item)
-      local t = item.track
+    format = function(entry)
+      local item = entry.item
+      local k = KIND[item.kind] or KIND.track
       local ret = {
-        { "  ", "SpotifyTitle" },
-        { t.name, "SpotifyTitle" },
-        { "   " .. t.artist, "SpotifyArtist" },
+        { "  ", "SpotifyArtist" },
+        { k.label, k.hl },
+        { "  " .. item.name, "SpotifyTitle" },
       }
-      if t.album ~= "" then
-        ret[#ret + 1] = { "  ·  " .. t.album, "SpotifyAlbum" }
+      if item.sub ~= "" then
+        ret[#ret + 1] = { "   " .. item.sub, "SpotifyArtist" }
       end
       return ret
     end,
-    confirm = function(picker, item)
+    confirm = function(picker, entry)
       picker:close()
-      if item and item.uri then
-        require("config.spotify").play_uri(item.uri)
-        vim.notify("▶ " .. item.track.name .. " — " .. item.track.artist, vim.log.levels.INFO, { title = "Spotify" })
+      if entry and entry.item then
+        play_item(entry.item)
       end
     end,
   })

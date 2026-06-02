@@ -14,6 +14,7 @@ local SCOPES = table.concat({
   "user-library-read",
   "user-library-modify",
   "user-read-recently-played",
+  "user-read-playback-state",
 }, " ")
 local AUTHORIZE_URL = "https://accounts.spotify.com/authorize"
 local TOKEN_URL = "https://accounts.spotify.com/api/token"

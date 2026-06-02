@@ -59,8 +59,10 @@ stops entirely when nvim loses focus. Tune via `M.config` at the top of
 
 ## 4. Search & library — 🔵 (needs Web API)
 
-- [x] **Search tracks → play** — live snacks picker (`<leader>m/`, `:Spotify
-      search <query>`), `<CR>` plays the pick. See "Search setup" below.
+- [x] **Search tracks / playlists / albums → play** — live snacks picker
+      (`<leader>m/`, `:Spotify search <query>`). Public search, no login needed.
+      `<CR>` plays a track, or plays a playlist/album in-context so the queue
+      continues. Each row carries a kind glyph. See "Search setup" below.
 - [x] **Browse your playlists → play** — `<leader>mP` / `:Spotify playlists`.
 - [x] **Liked Songs → play** — `<leader>mL` / `:Spotify liked`. Plays the pick
       *within* the Liked Songs collection (`spotify:user:<id>:collection`), so the
@@ -68,7 +70,11 @@ stops entirely when nvim loses focus. Tune via `M.config` at the top of
 - [x] **Recently played → play** — `<leader>mR` / `:Spotify recent`.
 - [x] **Like / unlike current track** — `<leader>mf`, float `f`, `:Spotify like`.
       Shows a ♥ in the float when the track is in your library.
-- [ ] Add track to the queue (`me/player/queue`, needs Premium)
+- [x] **Browse current context / queue** — `<leader>mo` (float `o`). Reads
+      `/me/player`: if you're in a playlist/album, browse its tracks (current
+      marked ▸) and jump to any — played in-context so the queue continues; if
+      not, falls back to the queue (`<leader>mq` / `:Spotify queue`).
+- [ ] Add track to the queue (`me/player/queue` PUT, needs Premium)
 - [ ] Recommendations picker
 - [ ] Device switching (Spotify Connect — needs Premium)
 

@@ -266,6 +266,122 @@ function M.recent()
   })
 end
 
+-- ── Now-playing navigation ───────────────────────────────────────────────────
+
+-- Track-row format with a ▸ marker on the currently-playing track.
+local function marked_format(item)
+  local ret = {
+    { item.current and "▸ " or "  ", "SpotifyKindTrack" },
+    { item.name, "SpotifyTitle" },
+    { "   " .. item.artist, "SpotifyArtist" },
+  }
+  if item.album ~= "" then
+    ret[#ret + 1] = { "  ·  " .. item.album, "SpotifyAlbum" }
+  end
+  return ret
+end
+
+-- Browse the current playlist/album; jump to any track (played in-context so
+-- the queue continues). `current_uri` gets the ▸ marker.
+local function browse_context(kind, context_uri, current_uri)
+  local id = context_uri:match("spotify:%w+:(%w+)")
+  if not id then
+    return vim.notify("Spotify: unknown context", vim.log.levels.WARN)
+  end
+  local base = (kind == "playlist") and ("/playlists/" .. id) or ("/albums/" .. id)
+  api_get(base .. "?fields=name", function(meta)
+    local name = (type(meta) == "table" and meta.name) or (kind:gsub("^%l", string.upper))
+    paged_picker({
+      source = "spotify_context",
+      title = "  " .. name,
+      first_path = base .. "/tracks?limit=50",
+      extract = function(page)
+        local out = {}
+        for _, it in ipairs(page.items or {}) do
+          local t = (kind == "playlist") and it.track or it -- playlist items wrap .track
+          if type(t) == "table" and t.uri then
+            local item = track_item(t)
+            item.current = (t.uri == current_uri)
+            out[#out + 1] = item
+          end
+        end
+        return out
+      end,
+      format = marked_format,
+      confirm = function(picker, item)
+        picker:close()
+        if item and item.uri then
+          require("config.spotify").play_uri(item.uri, context_uri)
+          vim.notify("▶ " .. item.name .. " — " .. item.artist, vim.log.levels.INFO, { title = "Spotify" })
+        end
+      end,
+    })
+  end)
+end
+
+-- Show the upcoming queue; selecting a track plays it.
+function M.queue()
+  if not (_G.Snacks and Snacks.picker) then
+    return vim.notify("Spotify needs the snacks.nvim picker", vim.log.levels.ERROR)
+  end
+  api_get("/me/player/queue", function(data, err)
+    if type(data) ~= "table" or data.ok then
+      return vim.notify("Spotify: " .. (err or "queue unavailable"), vim.log.levels.WARN)
+    end
+    local tracks = {}
+    if type(data.currently_playing) == "table" and data.currently_playing.uri then
+      local it = track_item(data.currently_playing)
+      it.current = true
+      tracks[#tracks + 1] = it
+    end
+    for _, t in ipairs(data.queue or {}) do
+      if type(t) == "table" and t.uri then
+        tracks[#tracks + 1] = track_item(t)
+      end
+    end
+    if #tracks == 0 then
+      return vim.notify("Spotify: queue is empty", vim.log.levels.WARN)
+    end
+    Snacks.picker.pick({
+      source = "spotify_queue",
+      title = "  Queue",
+      items = tracks,
+      layout = { preset = "dropdown", preview = false },
+      format = marked_format,
+      confirm = function(picker, item)
+        picker:close()
+        if item and item.uri then
+          require("config.spotify").play_uri(item.uri)
+          vim.notify("▶ " .. item.name .. " — " .. item.artist, vim.log.levels.INFO, { title = "Spotify" })
+        end
+      end,
+    })
+  end)
+end
+
+-- Detect the current playback context and open the right navigator: the current
+-- playlist/album if there is one, otherwise the queue.
+function M.now_context()
+  api_get("/me/player", function(data, err)
+    if type(data) ~= "table" or data.ok or type(data.item) ~= "table" then
+      return vim.notify("Spotify: " .. (err or "nothing playing"), vim.log.levels.WARN)
+    end
+    local current_uri = data.item.uri
+    local ctx = data.context
+    if type(ctx) == "table" and type(ctx.uri) == "string" then
+      if ctx.type == "playlist" then
+        return browse_context("playlist", ctx.uri, current_uri)
+      elseif ctx.type == "album" then
+        return browse_context("album", ctx.uri, current_uri)
+      elseif ctx.type == "collection" or ctx.uri:find(":collection") then
+        return M.liked() -- Liked Songs collection
+      end
+    end
+    vim.notify("Spotify: not in a playlist — showing the queue", vim.log.levels.INFO, { title = "Spotify" })
+    M.queue()
+  end)
+end
+
 -- bare track id from a spotify:track:ID uri (or pass a bare id through).
 local function track_id(uri)
   return uri:match("spotify:track:(%w+)") or uri
