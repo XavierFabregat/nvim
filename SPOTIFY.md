@@ -62,11 +62,12 @@ stops entirely when nvim loses focus. Tune via `M.config` at the top of
 - [x] **Search tracks → play** — live snacks picker (`<leader>m/`, `:Spotify
       search <query>`), `<CR>` plays the pick. See "Search setup" below.
 - [x] **Browse your playlists → play** — `<leader>mP` / `:Spotify playlists`.
-      PKCE login (once), reads `/me/playlists`, plays via AppleScript. See
-      "Library setup" below.
-- [ ] Like / save current track to library (add scope + endpoint)
+- [x] **Liked Songs → play** — `<leader>mL` / `:Spotify liked`.
+- [x] **Recently played → play** — `<leader>mR` / `:Spotify recent`.
+- [x] **Like / unlike current track** — `<leader>mf`, float `f`, `:Spotify like`.
+      Shows a ♥ in the float when the track is in your library.
 - [ ] Add track to the queue (`me/player/queue`, needs Premium)
-- [ ] Recently played / recommendations picker
+- [ ] Recommendations picker
 - [ ] Device switching (Spotify Connect — needs Premium)
 
 ### Search setup
@@ -106,14 +107,18 @@ code for tokens, and stores them at `stdpath("data")/spotify_nvim_token.json`
 
 - `:Spotify login` / `:Spotify logout` — manage the session.
 - Scopes requested: `playlist-read-private playlist-read-collaborative
-  user-library-read`.
+  user-library-read user-library-modify user-read-recently-played`. **When the
+  scopes change you must `:Spotify logout` and log in again** to mint a token
+  with the new permissions.
 - Code: `lua/config/spotify_auth.lua` (OAuth) + `lua/config/spotify_library.lua`
   (playlist picker).
 
 ## 5. Spicy / nice-to-have
 
 - [ ] Lyrics panel (external lyrics API, synced to player position) 🔵
-- [ ] Focus mode: auto-play a "deep work" playlist on entering Zen mode (`<leader>z`) 🟢
+- [x] Focus mode: auto-play a playlist on entering Zen mode, restore on exit 🟢
+      — set `M.config.focus_playlist = "spotify:playlist:..."` in
+      `lua/config/spotify.lua` (off by default)
 - [ ] Pomodoro tie-in: pause music on break 🟢
 - [ ] Persist / restore last volume across sessions 🟢
 

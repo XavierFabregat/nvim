@@ -15,6 +15,8 @@ M.config = {
   },
   refocus_terminal = true, -- after a URI-play, re-focus the terminal (Spotify steals it)
   terminal_app = nil, -- auto-detected from $TERM_PROGRAM; set e.g. "Warp" to override
+  show_saved = true, -- show a ♥ in the float when the track is in your library
+  focus_playlist = "spotify:playlist:1vAnxZWvdKPA0QurD449mD", -- auto-play on entering Zen mode
 }
 
 -- Latest status, refreshed by the poller. Read by the statusline component.
@@ -63,7 +65,7 @@ end if
 
 local STATE_GLYPH = { playing = "▶", paused = "⏸", stopped = "⏹" }
 local STATE_TEXT = { playing = "Playing", paused = "Paused", stopped = "Stopped" }
-local HINT = "  space ⏯   ·   h/l ⏮ ⏭   ·   +/- vol   ·   s/r   ·   y copy"
+local HINT = "  space ⏯   ·   h/l ⏮ ⏭   ·   +/- vol   ·   s/r   ·   f ♥   ·   y copy"
 
 -- Spotify-flavoured highlight groups, re-applied when the colorscheme changes.
 local function setup_highlights()
@@ -147,7 +149,7 @@ local function build_rows(info)
     { { "" } },
     { { "  " .. (STATE_GLYPH[info.state] or "•") .. "  " .. (STATE_TEXT[info.state] or info.state), "SpotifyState" } },
     { { "" } },
-    { { "  ♫  " .. info.track, "SpotifyTitle" } },
+    { { "  " .. (info.saved and "♥" or "♫") .. "  " .. info.track, "SpotifyTitle" } },
     { { "  ♪  " .. info.artist, "SpotifyArtist" } },
     { { "  💿 " .. info.album, "SpotifyAlbum" } },
     { { "" } },
@@ -266,6 +268,7 @@ local function open(rows)
     ["s"]       = act(M.toggle_shuffle),
     ["r"]       = act(M.toggle_repeat),
     ["y"]       = function() M.copy_link() end,
+    ["f"]       = function() require("config.spotify_library").toggle_save_current() end,
   }
   -- stylua: ignore end
   for lhs, fn in pairs(maps) do
@@ -341,6 +344,25 @@ local function notify_track(info)
   end
 end
 
+-- Silently look up library/saved status for a track and refresh the float.
+local function check_saved(uri)
+  if not M.config.show_saved then
+    return
+  end
+  local ok, lib = pcall(require, "config.spotify_library")
+  if not ok then
+    return
+  end
+  lib.is_saved(uri, function(saved)
+    if saved ~= nil and M.current and M.current.id == uri then
+      M.current.saved = saved
+      if float_open() then
+        render(M.current)
+      end
+    end
+  end, true) -- silent: never triggers a login
+end
+
 poll_once = function()
   fetch(function(info)
     if info == nil then
@@ -356,6 +378,7 @@ poll_once = function()
         notify_track(info)
       end
       poller.last_id = id
+      check_saved(id)
     end
     poller.primed = true
 
@@ -441,6 +464,48 @@ function M.status()
     render(info) -- opens the float
     subscribe("float", M.config.poll.float_ms)
   end)
+end
+
+-- Update the cached saved-status and refresh the float (called after a toggle).
+function M.set_saved(v)
+  if M.current then
+    M.current.saved = v
+  end
+  if float_open() then
+    render(M.current)
+  end
+end
+
+-- Focus mode: on entering Zen, stash the current track and play the focus
+-- playlist; on leaving, restore the stashed track + position.
+local focus_saved = nil
+
+function M.focus_enter()
+  if not M.config.focus_playlist then
+    return
+  end
+  fetch(function(info)
+    focus_saved = (info and not info.not_running) and { id = info.id, pos = info.pos, state = info.state } or nil
+    M.play_uri(nil, M.config.focus_playlist)
+  end)
+end
+
+function M.focus_leave()
+  if not M.config.focus_playlist then
+    return
+  end
+  local prev = focus_saved
+  focus_saved = nil
+  if not prev or not prev.id or prev.id == "" then
+    return
+  end
+  M.play_uri(prev.id)
+  vim.defer_fn(function()
+    M.seek_to(prev.pos)
+    if prev.state ~= "playing" then
+      M.pause()
+    end
+  end, 350)
 end
 
 function M.copy_link()
@@ -554,6 +619,11 @@ end tell]],
   ))
 end
 
+-- Seek to an absolute position in seconds.
+function M.seek_to(seconds)
+  tell("set player position to " .. tostring(to_num(seconds)))
+end
+
 -- NOTE: Spotify applies `set` asynchronously, so re-reading the property in the
 -- same block returns the stale value. Return the value we computed instead.
 function M.toggle_shuffle()
@@ -613,6 +683,18 @@ local ACTIONS = {
   playlists = function()
     require("config.spotify_library").playlists()
   end,
+  liked = function()
+    require("config.spotify_library").liked()
+  end,
+  recent = function()
+    require("config.spotify_library").recent()
+  end,
+  like = function()
+    require("config.spotify_library").toggle_save_current()
+  end,
+  save = function()
+    require("config.spotify_library").toggle_save_current()
+  end,
   login = function()
     require("config.spotify_auth").login()
   end,
@@ -669,6 +751,9 @@ if vim.fn.has("mac") == 1 then
   map("<leader>mr", M.toggle_repeat,  "Toggle repeat")
   map("<leader>m/", function() require("config.spotify_search").open() end, "Search songs")
   map("<leader>mP", function() require("config.spotify_library").playlists() end, "Playlists")
+  map("<leader>mL", function() require("config.spotify_library").liked() end, "Liked songs")
+  map("<leader>mR", function() require("config.spotify_library").recent() end, "Recently played")
+  map("<leader>mf", function() require("config.spotify_library").toggle_save_current() end, "Like/unlike current")
   -- stylua: ignore end
 
   -- Pause polling while nvim is in the background; resume on return without

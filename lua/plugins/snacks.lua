@@ -101,7 +101,20 @@ return {
       jumplist = true,
       modes = { "n", "i", "c" },
     },
-    zen = { enabled = true },
+    zen = {
+      enabled = true,
+      -- Auto-play the focus playlist (if M.config.focus_playlist is set) on Zen.
+      on_open = function()
+        pcall(function()
+          require("config.spotify").focus_enter()
+        end)
+      end,
+      on_close = function()
+        pcall(function()
+          require("config.spotify").focus_leave()
+        end)
+      end,
+    },
     terminal = { 
       enabled = true,
       win = {

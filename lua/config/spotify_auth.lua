@@ -8,7 +8,13 @@ local M = {}
 
 local REDIRECT_PORT = 8888
 local REDIRECT_URI = "http://127.0.0.1:" .. REDIRECT_PORT .. "/callback"
-local SCOPES = "playlist-read-private playlist-read-collaborative user-library-read"
+local SCOPES = table.concat({
+  "playlist-read-private",
+  "playlist-read-collaborative",
+  "user-library-read",
+  "user-library-modify",
+  "user-read-recently-played",
+}, " ")
 local AUTHORIZE_URL = "https://accounts.spotify.com/authorize"
 local TOKEN_URL = "https://accounts.spotify.com/api/token"
 local TOKEN_FILE = vim.fn.stdpath("data") .. "/spotify_nvim_token.json"
@@ -276,6 +282,21 @@ function M.token(cb)
     end)
   end
   authorize(cb)
+end
+
+-- Like M.token, but never launches the interactive browser flow: cb(token|nil).
+-- Use this from passive/background code (e.g. the saved-indicator check).
+function M.token_silent(cb)
+  local tokens = load_tokens()
+  if tokens and tokens.access_token and (tokens.expires_at or 0) > os.time() + 60 then
+    return cb(tokens.access_token)
+  end
+  if tokens and tokens.refresh_token then
+    return refresh(tokens, function(tok)
+      cb(tok or nil)
+    end)
+  end
+  cb(nil)
 end
 
 function M.login(cb)
