@@ -65,7 +65,7 @@ end if
 
 local STATE_GLYPH = { playing = "▶", paused = "⏸", stopped = "⏹" }
 local STATE_TEXT = { playing = "Playing", paused = "Paused", stopped = "Stopped" }
-local HINT = "  space ⏯   ·   h/l ⏮ ⏭   ·   +/- vol   ·   s/r   ·   f ♥   ·   y copy"
+local HINT = "  space ⏯  ·  h/l ⏮ ⏭  ·  +/- vol  ·  s/r  ·  f ♥  ·  w 🎤  ·  y copy"
 
 -- Spotify-flavoured highlight groups, re-applied when the colorscheme changes.
 local function setup_highlights()
@@ -78,6 +78,7 @@ local function setup_highlights()
   set(0, "SpotifyHint", { fg = "#6b7280", italic = true })
   set(0, "SpotifyBarFill", { fg = "#1db954" })
   set(0, "SpotifyBarEmpty", { fg = "#3a3a3a" })
+  set(0, "SpotifyLyricDim", { fg = "#5c6370" }) -- non-active lyric lines
 end
 setup_highlights()
 vim.api.nvim_create_autocmd("ColorScheme", { callback = setup_highlights })
@@ -203,6 +204,9 @@ local function unsubscribe(name)
   reschedule()
 end
 
+-- Exposed so other panels (e.g. lyrics) can keep the position poll fresh.
+M.subscribe, M.unsubscribe = subscribe, unsubscribe
+
 -- ── Float window ─────────────────────────────────────────────────────────────
 
 local NS = vim.api.nvim_create_namespace("spotify_float")
@@ -269,6 +273,7 @@ local function open(rows)
     ["r"]       = act(M.toggle_repeat),
     ["y"]       = function() M.copy_link() end,
     ["f"]       = function() require("config.spotify_library").toggle_save_current() end,
+    ["w"]       = function() require("config.spotify_lyrics").toggle() end,
   }
   -- stylua: ignore end
   for lhs, fn in pairs(maps) do
@@ -692,6 +697,9 @@ local ACTIONS = {
   like = function()
     require("config.spotify_library").toggle_save_current()
   end,
+  lyrics = function()
+    require("config.spotify_lyrics").toggle()
+  end,
   save = function()
     require("config.spotify_library").toggle_save_current()
   end,
@@ -754,6 +762,7 @@ if vim.fn.has("mac") == 1 then
   map("<leader>mL", function() require("config.spotify_library").liked() end, "Liked songs")
   map("<leader>mR", function() require("config.spotify_library").recent() end, "Recently played")
   map("<leader>mf", function() require("config.spotify_library").toggle_save_current() end, "Like/unlike current")
+  map("<leader>mw", function() require("config.spotify_lyrics").toggle() end, "Lyrics panel")
   -- stylua: ignore end
 
   -- Pause polling while nvim is in the background; resume on return without

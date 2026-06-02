@@ -46,6 +46,18 @@ local function api_get(path, cb)
   api("GET", path, cb)
 end
 
+-- Your Spotify user id (cached) — used to build the Liked Songs context URI.
+local cached_user_id = nil
+local function me_id(cb)
+  if cached_user_id then
+    return cb(cached_user_id)
+  end
+  api_get("/me", function(data)
+    cached_user_id = data and data.id or nil
+    cb(cached_user_id)
+  end)
+end
+
 -- Resolve the first track URI inside a playlist/album context, for `play track
 -- <track> in context <ctx>`. cb(track_uri | nil).
 function M.first_track(context_uri, cb)
@@ -214,7 +226,19 @@ function M.liked()
       return tracks
     end,
     format = track_format,
-    confirm = track_confirm,
+    -- Play the picked song *within* the Liked Songs collection, so the queue
+    -- continues with subsequent liked songs (collection context verified working).
+    confirm = function(picker, item)
+      picker:close()
+      if not (item and item.uri) then
+        return
+      end
+      me_id(function(id)
+        local ctx = id and ("spotify:user:" .. id .. ":collection") or nil
+        require("config.spotify").play_uri(item.uri, ctx)
+        vim.notify("▶ " .. item.name .. " — " .. item.artist, vim.log.levels.INFO, { title = "Spotify" })
+      end)
+    end,
   })
 end
 

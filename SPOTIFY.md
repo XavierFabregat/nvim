@@ -62,7 +62,9 @@ stops entirely when nvim loses focus. Tune via `M.config` at the top of
 - [x] **Search tracks → play** — live snacks picker (`<leader>m/`, `:Spotify
       search <query>`), `<CR>` plays the pick. See "Search setup" below.
 - [x] **Browse your playlists → play** — `<leader>mP` / `:Spotify playlists`.
-- [x] **Liked Songs → play** — `<leader>mL` / `:Spotify liked`.
+- [x] **Liked Songs → play** — `<leader>mL` / `:Spotify liked`. Plays the pick
+      *within* the Liked Songs collection (`spotify:user:<id>:collection`), so the
+      queue continues with subsequent liked songs.
 - [x] **Recently played → play** — `<leader>mR` / `:Spotify recent`.
 - [x] **Like / unlike current track** — `<leader>mf`, float `f`, `:Spotify like`.
       Shows a ♥ in the float when the track is in your library.
@@ -115,7 +117,10 @@ code for tokens, and stores them at `stdpath("data")/spotify_nvim_token.json`
 
 ## 5. Spicy / nice-to-have
 
-- [ ] Lyrics panel (external lyrics API, synced to player position) 🔵
+- [x] Karaoke lyrics panel 🟢 — `<leader>mw` / float `w` / `:Spotify lyrics`.
+      Synced lyrics from lrclib.net (free, no auth), current line centred + green,
+      auto-scrolls with playback; falls back to plain lyrics, then a search.
+      Code: `lua/config/spotify_lyrics.lua`.
 - [x] Focus mode: auto-play a playlist on entering Zen mode, restore on exit 🟢
       — set `M.config.focus_playlist = "spotify:playlist:..."` in
       `lua/config/spotify.lua` (off by default)
