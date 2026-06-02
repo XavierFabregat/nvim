@@ -78,7 +78,8 @@ local function setup_highlights()
   set(0, "SpotifyHint", { fg = "#6b7280", italic = true })
   set(0, "SpotifyBarFill", { fg = "#1db954" })
   set(0, "SpotifyBarEmpty", { fg = "#3a3a3a" })
-  set(0, "SpotifyLyricDim", { fg = "#5c6370" }) -- non-active lyric lines
+  set(0, "SpotifyLyricDim", { fg = "#5c6370" }) -- non-active lines (synced karaoke)
+  set(0, "SpotifyLyricText", { fg = "#e5e7eb" }) -- plain/unsynced lyrics (readable)
   -- Search result kind tags (distinct colours so track/playlist/album are clear).
   set(0, "SpotifyKindTrack", { fg = "#1db954", bold = true }) -- green
   set(0, "SpotifyKindPlaylist", { fg = "#38bdf8", bold = true }) -- sky blue

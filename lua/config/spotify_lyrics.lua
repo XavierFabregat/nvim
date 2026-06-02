@@ -23,7 +23,7 @@ local state = {
   last_clock = nil,
 }
 
-local fetch_lyrics, tick -- forward declarations
+local fetch_lyrics, tick, close -- forward declarations
 
 local function num(v)
   return tonumber((tostring(v):gsub(",", "."))) or 0
@@ -39,6 +39,15 @@ end
 
 local function win_valid()
   return state.win ~= nil and vim.api.nvim_win_is_valid(state.win)
+end
+
+-- Synced lyrics dim the panel so the active line pops; plain (unsynced) lyrics
+-- stay bright and readable, since there's no line to highlight.
+local function set_dim(dim)
+  if win_valid() then
+    local hl = dim and "SpotifyLyricDim" or "SpotifyLyricText"
+    vim.wo[state.win].winhighlight = "NormalFloat:" .. hl .. ",FloatBorder:FloatBorder"
+  end
 end
 
 local function geometry()
@@ -135,15 +144,21 @@ local function use(cur, data)
   state.loading = false
   if data and type(data) == "table" and type(data.syncedLyrics) == "string" and data.syncedLyrics ~= "" then
     state.lines, state.synced = parse_lrc(data.syncedLyrics), true
+    set_dim(true)
   elseif data and type(data) == "table" and type(data.plainLyrics) == "string" and data.plainLyrics ~= "" then
     state.lines, state.synced = parse_plain(data.plainLyrics), false
+    set_dim(false)
   else
-    state.lines, state.synced = nil, false
+    -- Genuinely not in lrclib → toast and close the panel rather than sit empty.
+    vim.notify("No lyrics found for " .. (cur.track or "this track"), vim.log.levels.INFO, { title = "Lyrics" })
+    return close()
   end
   state.active = nil
   set_buf_lines()
   if state.synced then
     tick()
+  else
+    vim.api.nvim_buf_clear_namespace(state.buf, NS, 0, -1) -- no active line to mark
   end
 end
 
@@ -231,7 +246,7 @@ end
 
 -- ── Open / close ─────────────────────────────────────────────────────────────
 
-local function close()
+close = function()
   stop_timer()
   pcall(function()
     require("config.spotify").unsubscribe("lyrics")
