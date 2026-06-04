@@ -1,3 +1,15 @@
+-- Explicit float for lazygit: call-site win opts outrank the global terminal
+-- config (position = "bottom"), which is why the style alone wasn't enough.
+local lazygit_float = {
+  win = {
+    position = "float",
+    width = 0.9,
+    height = 0.9,
+    border = "rounded",
+    backdrop = 60,
+  },
+}
+
 return {
   "folke/snacks.nvim",
   priority = 1000,
@@ -135,9 +147,9 @@ return {
     { "<leader>cR", function() Snacks.rename.rename_file() end, desc = "Rename File" },
     { "<leader>gB", function() Snacks.gitbrowse() end, desc = "Git Browse" },
     { "<leader>gb", function() Snacks.git.blame_line() end, desc = "Git Blame Line" },
-    { "<leader>gg", function() Snacks.lazygit() end, desc = "Lazygit (cwd)", mode = "n" },
-    { "<leader>gf", function() Snacks.lazygit.log_file() end, desc = "Lazygit Current File History" },
-    { "<leader>gl", function() Snacks.lazygit.log() end, desc = "Lazygit Log (cwd)" },
+    { "<leader>gg", function() Snacks.lazygit(lazygit_float) end, desc = "Lazygit (cwd)", mode = "n" },
+    { "<leader>gf", function() Snacks.lazygit.log_file(lazygit_float) end, desc = "Lazygit Current File History" },
+    { "<leader>gl", function() Snacks.lazygit.log(lazygit_float) end, desc = "Lazygit Log (cwd)" },
     { "<leader>un", function() Snacks.notifier.hide() end, desc = "Dismiss All Notifications" },
     { "<c-/>", function() Snacks.terminal() end, desc = "Toggle Terminal" },
     { "<c-_>", function() Snacks.terminal() end, desc = "Toggle Terminal" },
